@@ -1,0 +1,18 @@
+[submodule "modules/cocotb"]
+	path = modules/cocotb
+	url = https://github.com/cocotb/cocotb.git
+[submodule "modules/liteiclink"]
+	path = modules/liteiclink
+	url = https://github.com/enjoy-digital/liteiclink.git
+[submodule "modules/migen"]
+	path = modules/migen
+	url = https://github.com/elhep/migen.git
+[submodule "modules/misoc"]
+	path = modules/misoc
+	url = https://github.com/elhep/misoc.git
+[submodule "modules/artiq"]
+	path = modules/artiq
+	url = https://github.com/elhep/artiq.git
+[submodule "modules/nix-scripts"]
+	path = modules/nix-scripts
+	url = https://git.m-labs.hk/M-Labs/nix-scripts.git
