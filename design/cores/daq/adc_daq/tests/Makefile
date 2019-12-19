@@ -1,6 +1,6 @@
-VERILOG_SOURCES = /home/ms/Software/Xilinx/Vivado/2017.4/data/verilog/src/glbl.v $(PWD)/../build/top.v
+VERILOG_SOURCES = /home/ms/Software/Xilinx/Vivado/2017.4/data/verilog/src/glbl.v $(PWD)/adc_phy_daq.v
 TOPLEVEL=top
-MODULE=tdc_iface_test
+MODULE=tb_adc_phy_daq
 
 COMPILE_ARGS=-y/home/ms/Software/Xilinx/Vivado/2017.4/data/verilog/src/unisims -s glbl
 

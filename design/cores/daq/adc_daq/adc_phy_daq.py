@@ -4,7 +4,7 @@ from migen.build.generic_platform import *
 
 from migen import *
 from migen.fhdl.specials import Memory
-from migen.genlib.cdc import BusSynchronizer
+from migen.genlib.cdc import BusSynchronizer, PulseSynchronizer
 from migen.fhdl import verilog
 from artiq.gateware.rtio import rtlink
 
@@ -19,19 +19,19 @@ class AdcPhyDaq(Module):
           1: pretrigger[23:12], posttrigger[11:0]
         """
 
+        self.clock_domains.dclk = cd_dclk = ClockDomain()
+        self.comb += cd_dclk.clk.eq(data_clk)
+
         # --------------------------------------------------------------------------------------------------------------
         # Sample memory
 
-        memory = Memory(len(data), max_samples)
-        memory_write_port = memory.get_port(write_capable=True)
+        memory = Memory(len(data), max_samples, init=[0]*max_samples)
+        memory_write_port = memory.get_port(write_capable=True, clock_domain="dclk")
         memory_read_port = memory.get_port(has_re=True, clock_domain="rio_phy")
+        self.specials += [ memory, memory_write_port, memory_read_port ]
 
         # --------------------------------------------------------------------------------------------------------------
         # Data clock domain
-
-        cd_dclk = ClockDomain()
-        self.clock_domains += cd_dclk
-        self.comb += cd_dclk.clk.eq(data_clk)
 
         trigger_dclk = Signal()
         pretrigger_len_dclk = Signal(max=max_samples)
@@ -53,12 +53,6 @@ class AdcPhyDaq(Module):
             .Else(
                current_address_dclk.eq(current_address_dclk+1)),
 
-            # Compute start address for further readout
-            If(current_address_dclk < pretrigger_len_dclk,
-               data_start_address_dclk.eq(max_samples+current_address_dclk-pretrigger_len_dclk)).
-            Else(
-                data_start_address_dclk.eq(current_address_dclk-pretrigger_len_dclk)),
-
             # We'll be using rising edge of trig, previous value is needed
             trig_prev_dclk.eq(trigger_dclk)
         ]
@@ -66,39 +60,48 @@ class AdcPhyDaq(Module):
         self.comb += [
             memory_write_port.adr.eq(current_address_dclk),
             memory_write_port.dat_w.eq(data),
-            trig_re_dclk.eq(trigger_dclk & ~trig_prev_dclk)
+            trig_re_dclk.eq(trigger_dclk & ~trig_prev_dclk),
+            # Compute start address for further readout
+            If(current_address_dclk < pretrigger_len_dclk,
+                data_start_address_dclk.eq(max_samples + current_address_dclk - pretrigger_len_dclk)).
+            Else(
+                data_start_address_dclk.eq(current_address_dclk - pretrigger_len_dclk)),
         ]
 
         # Data clock side FSM
-        fsm = ClockDomainsRenamer("dclk")(FSM("PRETRIGGER"))
-        fsm.act("PRETRIGGER",
+        fsm_dclk = ClockDomainsRenamer("dclk")(FSM("PRETRIGGER"))
+        fsm_dclk.act("PRETRIGGER",
                 memory_write_port.we.eq(1),
-                transfer_en_dclk.eq(0),
                 If(trig_re_dclk,
                    NextValue(data_start_address_reg_dclk, data_start_address_dclk),
-                   NextValue(posttrigger_counter_dclk, posttrigger_len_dclk),
-                   NextState("POSTTRIGGER"))
-                )
-        fsm.act("POSTTRIGGER",
+                   If(posttrigger_len_dclk != 0,
+                       NextValue(posttrigger_counter_dclk, posttrigger_len_dclk),
+                       NextState("POSTTRIGGER")).
+                   Else(
+                       NextState("TRANSFER"),
+                       NextValue(transfer_en_dclk, 1))
+                ))
+        fsm_dclk.act("POSTTRIGGER",
                 memory_write_port.we.eq(1),
-                transfer_en_dclk.eq(0),
                 NextValue(posttrigger_counter_dclk, posttrigger_counter_dclk-1),
                 If(posttrigger_counter_dclk == 0,
-                   NextState("TRANSFER"))
+                   NextState("TRANSFER"),
+                   NextValue(transfer_en_dclk, 1))
                 )
-        fsm.act("TRANSFER",
+        fsm_dclk.act("TRANSFER",
                 memory_write_port.we.eq(0),
-                transfer_en_dclk.eq(1),
+                NextValue(transfer_en_dclk, 0),
                 If(transfer_done_dclk,
                    NextState("PRETRIGGER"))
                 )
+        self.submodules += fsm_dclk
 
         # --------------------------------------------------------------------------------------------------------------
         # RIO Clock Domain
 
         self.rtlink = rtlink.Interface(
             rtlink.OInterface(data_width=24, address_width=2),  # address_width = width + 1
-            rtlink.IInterface(data_width=12, timestamped=True))
+            rtlink.IInterface(data_width=10, timestamped=True))
 
         trigger_rio_phy = Signal()
         pretrigger_len_rio_phy = Signal.like(pretrigger_len_dclk)
@@ -108,30 +111,31 @@ class AdcPhyDaq(Module):
         data_start_address_reg_rio_phy = Signal.like(data_start_address_reg_dclk)
         transfer_en_rio_phy = Signal()
 
-        address_rio_phy = Signal.like(memory_read_port.adr)
-        counter_rio_phy = Signal.like(address_rio_phy)
+        counter_rio_phy = Signal.like(memory_read_port.adr)
 
         # Rio clock side FSM
-        fsm = ClockDomainsRenamer("rio_phy")(FSM("IDLE"))
-        fsm.act("IDLE",
+        fsm_rio_phy = ClockDomainsRenamer("rio_phy")(FSM("IDLE"))
+        fsm_rio_phy.act("IDLE",
                 memory_read_port.re.eq(0),
-                transfer_done_rio_phy.eq(1),
+                NextValue(transfer_done_rio_phy, 0),
+                NextValue(self.rtlink.i.stb, 0),
                 If(transfer_en_rio_phy,
-                   NextValue(address_rio_phy, data_start_address_reg_rio_phy),
-                   NextValue(counter_rio_phy, 1),
+                   NextValue(memory_read_port.adr, data_start_address_reg_rio_phy),
+                   NextValue(counter_rio_phy, 0),
                    NextState("TRANSFER"))
                 )
-        fsm.act("TRANSFER",
-                memory_read_port.re.eq(0),
-                transfer_done_rio_phy.eq(0),
+        fsm_rio_phy.act("TRANSFER",
+                memory_read_port.re.eq(1),
                 NextValue(counter_rio_phy, counter_rio_phy+1),
-                self.rtlink.i.stb.eq(1),
-                If(address_rio_phy+1 >= max_samples,
-                   NextValue(address_rio_phy, 0))
-                .Else(NextValue(address_rio_phy, address_rio_phy+1)),
-                If(counter_rio_phy == (pretrigger_len_rio_phy + posttrigger_len_rio_phy),
-                   NextState("IDLE"))
+                NextValue(self.rtlink.i.stb, 1),
+                If(memory_read_port.adr+1 >= max_samples,
+                   NextValue(memory_read_port.adr, 0))
+                .Else(NextValue(memory_read_port.adr, memory_read_port.adr+1)),
+                If(counter_rio_phy == (pretrigger_len_rio_phy + posttrigger_len_rio_phy - 1),
+                   NextState("IDLE"),
+                   NextValue(transfer_done_rio_phy, 1))
                 )
+        self.submodules += fsm_rio_phy
 
         self.sync.rio_phy += [
             trigger_rio_phy.eq(0),
@@ -148,21 +152,40 @@ class AdcPhyDaq(Module):
         # --------------------------------------------------------------------------------------------------------------
         # CDC dclk -> rio_phy
 
-        cdc_dclk_rio_phy = BusSynchronizer(len(data_start_address_reg_dclk) + 1, idomain="dclk", odomain="rio_phy")
-        self.submodules += cdc_dclk_rio_phy
+        # cdc_dclk_rio_phy = BusSynchronizer(len(data_start_address_reg_dclk), idomain="dclk", odomain="rio_phy")
+        # self.submodules += cdc_dclk_rio_phy
+        # self.comb += [
+        #     cdc_dclk_rio_phy.i.eq(data_start_address_reg_dclk),
+        #     data_start_address_reg_rio_phy.eq(cdc_dclk_rio_phy.o)
+        # ]
+        self.comb += [data_start_address_reg_rio_phy.eq(data_start_address_reg_dclk)]
+        cdc_transfer_en_dclk_rio_phy = PulseSynchronizer(idomain="dclk", odomain="rio_phy")
+        self.submodules += cdc_transfer_en_dclk_rio_phy
         self.comb += [
-            cdc_dclk_rio_phy.i.eq(Cat(data_start_address_reg_dclk, transfer_en_dclk)),
-            Cat(data_start_address_reg_rio_phy, transfer_en_rio_phy).eq(cdc_dclk_rio_phy.o)
+            cdc_transfer_en_dclk_rio_phy.i.eq(transfer_en_dclk),
+            transfer_en_rio_phy.eq(cdc_transfer_en_dclk_rio_phy.o)
         ]
 
         # --------------------------------------------------------------------------------------------------------------
         # CDC rio_phy -> dclk
 
-        cdc_rio_phy_dclk = BusSynchronizer(25, idomain="rio_phy", odomain="dclk")
+        cdc_rio_phy_dclk = BusSynchronizer(24, idomain="rio_phy", odomain="dclk")
         self.submodules += cdc_rio_phy_dclk
         self.comb += [
-            cdc_rio_phy_dclk.i.eq(Cat(pretrigger_len_rio_phy, posttrigger_len_rio_phy, trigger_rio_phy)),
-            Cat(pretrigger_len_dclk, posttrigger_len_dclk, trigger_dclk).eq(cdc_rio_phy_dclk.o)
+            cdc_rio_phy_dclk.i.eq(Cat(pretrigger_len_rio_phy, posttrigger_len_rio_phy)),
+            Cat(pretrigger_len_dclk, posttrigger_len_dclk).eq(cdc_rio_phy_dclk.o)
+        ]
+        cdc_trigger_rio_phy_dclk = PulseSynchronizer(idomain="rio_phy", odomain="dclk")
+        self.submodules += cdc_trigger_rio_phy_dclk
+        self.comb += [
+            cdc_trigger_rio_phy_dclk.i.eq(trigger_rio_phy),
+            trigger_dclk.eq(cdc_trigger_rio_phy_dclk.o)
+        ]
+        cdc_transfer_done_rio_phy_dclk = PulseSynchronizer(idomain="rio_phy", odomain="dclk")
+        self.submodules += cdc_transfer_done_rio_phy_dclk
+        self.comb += [
+            cdc_transfer_done_rio_phy_dclk.i.eq(transfer_done_rio_phy),
+            transfer_done_dclk.eq(cdc_transfer_done_rio_phy_dclk.o)
         ]
 
 
@@ -171,18 +194,18 @@ class SimulationWrapper(Module):
     def __init__(self):
 
         self.data_clk = Signal()
-        self.data = Signal()
+        self.data = Signal(10)
 
-        self.rio_phy_clk = Signal()
         self.clock_domains.cd_rio_phy = cd_rio_phy = ClockDomain()
-        # self.comb += self.clock_domains.cd_rio_phy.clk.eq(self.rio_phy_clk)
 
-        self.submodules.dut = dut = AdcPhyDaq(self.data_clk, self.data, 3000)
+        self.submodules.dut = dut = AdcPhyDaq(self.data_clk, self.data, 2048)
 
         self.io = {
+            self.dut.dclk.rst,
             self.data_clk,
             self.data,
             cd_rio_phy.clk,
+            cd_rio_phy.rst,
             dut.rtlink.i.stb,
             dut.rtlink.i.data,
             dut.rtlink.o.stb,
@@ -193,13 +216,15 @@ class SimulationWrapper(Module):
 if __name__ == "__main__":
 
     from migen.build.xilinx import common
+    from design.simulation.common import update_tb
 
     module = SimulationWrapper()
     so = dict(common.xilinx_special_overrides)
     so.update(common.xilinx_s7_special_overrides)
 
     verilog.convert(fi=module,
-                    name="AdcPhyDaq",
+                    name="top",
                     special_overrides=so,
                     ios=module.io,
-                    create_clock_domains=False).write('tests/adc_phy_daq/adc_phy_daq.v')
+                    create_clock_domains=False).write('design/cores/tests/adc_phy_daq/adc_phy_daq.v')
+    update_tb('design/cores/tests/adc_phy_daq/adc_phy_daq.v')

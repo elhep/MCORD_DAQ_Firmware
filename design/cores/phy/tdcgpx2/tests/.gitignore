@@ -1,0 +1,4 @@
+**.vcd
+results.xml
+build/**
+sim_build/**

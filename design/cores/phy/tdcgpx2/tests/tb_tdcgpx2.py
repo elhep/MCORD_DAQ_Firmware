@@ -1,5 +1,4 @@
 import random
-
 import cocotb
 
 from cocotb.triggers import Timer, RisingEdge, FallingEdge
@@ -12,7 +11,7 @@ def int_to_bits(i, length):
     return [int(x) for x in bin(i)[2:].zfill(length)]
 
 # noinspection PyStatementEffect
-class LvdsInterfaceTb:
+class TbTdcGpx2:
 
     def __init__(self, dut, clk_freq_mhz, delay_ps):
         self.dut = dut
@@ -62,7 +61,7 @@ class LvdsInterfaceTb:
 
 @cocotb.test()
 def run_tests(dut):
-    tb = LvdsInterfaceTb(dut, 100, 320)
+    tb = TbTdcGpx2(dut, 100, 320)
     dut.frame_length_i <= 44
     yield tb.initialize()
     frames = [
@@ -71,7 +70,4 @@ def run_tests(dut):
         int_to_bits(0x123456789AB, 44)
     ]
     yield tb.send_data_frames(frames)
-    # yield tb.send_data_frame(int_to_bits(0xF0F0F0F0F0F, 44))
-    # yield tb.send_data_frame(int_to_bits(0x123456789AB, 44))
-
     yield Timer(100, 'ns')

@@ -1,12 +1,12 @@
 from migen.build.xilinx.platform import XilinxPlatform
 from migen.build.generic_platform import *
-from ..common import *
+from design.cores.common import *
 
 
 class SimulationWrapper(Module):
 
     def __init__(self, platform, max_frame_length):
-        self.submodules.dut = dut = LvdsSerialInterface(max_frame_length=max_frame_length, frame_idelay=False)
+        self.submodules.dut = dut = TdcGpx2Phy(max_frame_length=max_frame_length, frame_idelay=False)
         self.submodules += XilinxIdelayctrl(platform.request("ref_clk_200MHz"))
         self.comb += [
             dut.data_clk_i.eq(platform.request("data_clk_i")),
@@ -18,9 +18,9 @@ class SimulationWrapper(Module):
         ]
 
 
-class LvdsSerialInterface(Module):
+class TdcGpx2Phy(Module):
 
-    def __init__(self, max_frame_length, frame_idelay=False):
+    def __init__(self, max_frame_length=44, frame_idelay=False):
 
         # Interface definition
         # ==========================================
@@ -31,6 +31,7 @@ class LvdsSerialInterface(Module):
         self.data_i = Signal()
 
         # Outputs
+        # TODO: describe clock domains
         self.data_o = Signal(max_frame_length)
         self.stb_o = Signal()
 

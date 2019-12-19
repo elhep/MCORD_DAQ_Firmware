@@ -11,7 +11,7 @@ class ADS5296A_XS7(Module):
 
     def __init__(self, adclk_i, lclk_i, dat_i, resolution="10b"):
 
-        assert resolution in ["10b", "12b"]
+        assert resolution == "10b"
 
         if resolution == "10b":
             DAT_O_LEN = 10

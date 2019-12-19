@@ -1,10 +1,7 @@
 import os
 
 
-def generate_cocotb_tb(platform, module, build_dir="./build"):
-    platform.build(module, build_dir=build_dir, run=False)
-    verilog_path = os.path.join(build_dir, "top.v")
-
+def update_tb(verilog_path):
     with open(verilog_path) as f:
         design = f.read()
 
@@ -25,3 +22,11 @@ endmodule
 
     with open(verilog_path, 'w') as f:
         f.write(design)
+
+
+def generate_cocotb_tb(platform, module, build_dir="./build"):
+    platform.build(module, build_dir=build_dir, run=False)
+    update_tb(os.path.join(build_dir, "top.v"))
+
+
+
