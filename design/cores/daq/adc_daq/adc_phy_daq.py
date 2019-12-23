@@ -19,8 +19,8 @@ class AdcPhyDaq(Module):
           1: pretrigger[23:12], posttrigger[11:0]
         """
 
-        self.clock_domains.dclk = cd_dclk = ClockDomain()
-        self.comb += cd_dclk.clk.eq(data_clk)
+        # self.clock_domains.dclk = cd_dclk = ClockDomain("dclk")
+        # self.comb += cd_dclk.clk.eq(data_clk)
 
         # --------------------------------------------------------------------------------------------------------------
         # Sample memory
@@ -94,7 +94,7 @@ class AdcPhyDaq(Module):
                 If(transfer_done_dclk,
                    NextState("PRETRIGGER"))
                 )
-        self.submodules += fsm_dclk
+        self.submodules.fsm_dclk = fsm_dclk
 
         # --------------------------------------------------------------------------------------------------------------
         # RIO Clock Domain
@@ -135,7 +135,7 @@ class AdcPhyDaq(Module):
                    NextState("IDLE"),
                    NextValue(transfer_done_rio_phy, 1))
                 )
-        self.submodules += fsm_rio_phy
+        self.submodules.fsm_rio_phy = fsm_rio_phy
 
         self.sync.rio_phy += [
             trigger_rio_phy.eq(0),
@@ -152,15 +152,9 @@ class AdcPhyDaq(Module):
         # --------------------------------------------------------------------------------------------------------------
         # CDC dclk -> rio_phy
 
-        # cdc_dclk_rio_phy = BusSynchronizer(len(data_start_address_reg_dclk), idomain="dclk", odomain="rio_phy")
-        # self.submodules += cdc_dclk_rio_phy
-        # self.comb += [
-        #     cdc_dclk_rio_phy.i.eq(data_start_address_reg_dclk),
-        #     data_start_address_reg_rio_phy.eq(cdc_dclk_rio_phy.o)
-        # ]
         self.comb += [data_start_address_reg_rio_phy.eq(data_start_address_reg_dclk)]
         cdc_transfer_en_dclk_rio_phy = PulseSynchronizer(idomain="dclk", odomain="rio_phy")
-        self.submodules += cdc_transfer_en_dclk_rio_phy
+        self.submodules.cdc_transfer_en_dclk_rio_phy = cdc_transfer_en_dclk_rio_phy
         self.comb += [
             cdc_transfer_en_dclk_rio_phy.i.eq(transfer_en_dclk),
             transfer_en_rio_phy.eq(cdc_transfer_en_dclk_rio_phy.o)
@@ -170,19 +164,19 @@ class AdcPhyDaq(Module):
         # CDC rio_phy -> dclk
 
         cdc_rio_phy_dclk = BusSynchronizer(24, idomain="rio_phy", odomain="dclk")
-        self.submodules += cdc_rio_phy_dclk
+        self.submodules.cdc_rio_phy_dclk = cdc_rio_phy_dclk
         self.comb += [
             cdc_rio_phy_dclk.i.eq(Cat(pretrigger_len_rio_phy, posttrigger_len_rio_phy)),
             Cat(pretrigger_len_dclk, posttrigger_len_dclk).eq(cdc_rio_phy_dclk.o)
         ]
         cdc_trigger_rio_phy_dclk = PulseSynchronizer(idomain="rio_phy", odomain="dclk")
-        self.submodules += cdc_trigger_rio_phy_dclk
+        self.submodules.cdc_trigger_rio_phy_dclk = cdc_trigger_rio_phy_dclk
         self.comb += [
             cdc_trigger_rio_phy_dclk.i.eq(trigger_rio_phy),
             trigger_dclk.eq(cdc_trigger_rio_phy_dclk.o)
         ]
         cdc_transfer_done_rio_phy_dclk = PulseSynchronizer(idomain="rio_phy", odomain="dclk")
-        self.submodules += cdc_transfer_done_rio_phy_dclk
+        self.submodules.cdc_transfer_done_rio_phy_dclk = cdc_transfer_done_rio_phy_dclk
         self.comb += [
             cdc_transfer_done_rio_phy_dclk.i.eq(transfer_done_rio_phy),
             transfer_done_dclk.eq(cdc_transfer_done_rio_phy_dclk.o)

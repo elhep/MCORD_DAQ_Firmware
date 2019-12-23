@@ -1,0 +1,1 @@
+export PYTHONPATH=$(pwd):$(pwd)/modules/artiq:$(pwd)/modules/misoc:$(pwd)/modules/migen:$PYTHONPATH

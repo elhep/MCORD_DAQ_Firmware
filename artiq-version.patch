@@ -1,0 +1,35 @@
+diff --git a/artiq-fast/pkgs/artiq-version.nix b/artiq-fast/pkgs/artiq-version.nix
+index 6363d5e..29ce804 100644
+--- a/artiq-fast/pkgs/artiq-version.nix
++++ b/artiq-fast/pkgs/artiq-version.nix
+@@ -1,22 +1,16 @@
+ { stdenv, git, fetchgit }:
+ let
+-  artiq-version = stdenv.mkDerivation {
++    artiq-version = stdenv.mkDerivation {
+     name = "artiq-version";
+-    src = import ./artiq-src.nix { inherit fetchgit; };
+-    # keep in sync with ../../artiq-fast.nix
++    src = <repoRoot>;
+     buildPhase = ''
+-      REV=`${git}/bin/git rev-parse HEAD`
+-      MAJOR_VERSION=`cat MAJOR_VERSION`
+-      if [ -e BETA ]; then
+-        SUFFIX=".beta"
+-      else
+-        SUFFIX=""
+-      fi
+-      COMMIT_COUNT=`${git}/bin/git rev-list --count HEAD`
++        REV=`cd modules/artiq && ${git}/bin/git rev-parse HEAD`
++        MAJOR_VERSION=`cd modules/artiq && cat MAJOR_VERSION`
++        COMMIT_COUNT=`cd modules/artiq && ${git}/bin/git rev-list --count HEAD`
+     '';
+     installPhase = ''
+-      echo -n $MAJOR_VERSION.$COMMIT_COUNT.`cut -c1-8 <<< $REV`$SUFFIX > $out
++        echo -n $MAJOR_VERSION.$COMMIT_COUNT.`cut -c1-8 <<< $REV`$SUFFIX > $out
+     '';
+-  };
++    };
+ in
+-  builtins.readFile artiq-version
++    builtins.readFile artiq-version

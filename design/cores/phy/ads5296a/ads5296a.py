@@ -1,61 +1,41 @@
 from migen import *
-
-from migen.build.xilinx.platform import XilinxPlatform
 from migen.build.generic_platform import *
 from migen.genlib.io import DifferentialInput
+from migen.genlib.resetsync import AsyncResetSynchronizer
 
-from design.cores.common import XilinxIdelayE2, XilinxIdelayctrl
+from design.cores.common import XilinxIdelayE2
+
 
 
 class ADS5296A_XS7(Module):
 
-    def __init__(self, adclk_i, lclk_i, dat_i, resolution="10b"):
+    def __init__(self, platform, adclk_i, lclk_i, dat_i):
 
-        assert resolution == "10b"
-
-        if resolution == "10b":
-            DAT_O_LEN = 10
-            BUFR_DIVIDE = 5
-            VALID_FRAME_OUT = 0b1111100000
-        elif resolution == "12b":
-            DAT_O_LEN = 12
-            BUFR_DIVIDE = 6
-            VALID_FRAME_OUT = 0b111111000000
-        else:
-            raise ValueError("Supported resolutions: `10b`, `12b`")
+        DAT_O_LEN = 10
+        BUFR_DIVIDE = 5
+        VALID_FRAME_OUT = 0b1111100000
 
         # Outputs
         self.data_clk_o = Signal()
         self.bitslip_done = Signal()
         self.data_o = [Signal(DAT_O_LEN, name="data_{}_o".format(i)) for i in range(9)]
 
-        # Configuration inputs
-        self.idelay_val_i = [Signal(5, name="idelay_val_{}_i".format(i)) for i in range(9)]
-        self.idelay_ld_i = Signal()
-        self.rst_i = Signal()
-
-        # Input buffers, delay lines
-        self.ref_clk_200M = Signal()
-        self.submodules.idelayctrl = XilinxIdelayctrl(self.ref_clk_200M)
-
         input_lines = [*dat_i, adclk_i]
         lines_delayed = [Signal(name="line_delayed_{}".format(i)) for i in range(9)]
-        for input_line, line_delayed, idelay_val in zip(input_lines, lines_delayed, self.idelay_val_i):
+        for idx, (input_line, line_delayed) in enumerate(zip(input_lines, lines_delayed)):
             line_buffer = Signal()
             self.specials += DifferentialInput(i_p=input_line.p,
                                                i_n=input_line.n,
                                                o=line_buffer)
-            self.submodules += XilinxIdelayE2(data_i=line_buffer,
-                                              data_o=line_delayed,
-                                              delay_i=idelay_val,
-                                              delay_ld_i=self.idelay_ld_i)
+            self.submodules += XilinxIdelayE2(data_i=line_buffer, data_o=line_delayed)
 
         # Clocking
         lclk_ibuf = Signal()
         lclk_bufio = Signal()
 
         self.clock_domains.cd_adclk_clkdiv = cd_div4 = ClockDomain()
-        self.comb += [cd_div4.rst.eq(~self.idelayctrl.rdy)]
+        self.specials += [AsyncResetSynchronizer(cd_div4, ResetSignal("sys"))]
+        platform.add_period_constraint(cd_div4.clk, 10.)
 
         self.specials += DifferentialInput(i_p=lclk_i.p,
                                            i_n=lclk_i.n,
@@ -84,61 +64,55 @@ class ADS5296A_XS7(Module):
         ]
 
         # ISERDES
-        if resolution == "10b":
+        # For 10b deserialization we'll be using two ISERDES modules connected in MASTER-SLAVE mode.
 
-            # For 10b deserialization we'll be using two ISERDES modules connected in MASTER-SLAVE mode.
+        # In this mode stb_o is just div4 clock
+        self.specials += Instance("BUFG", i_I=cd_div4.clk, o_O=self.data_clk_o)
 
-            # In this mode stb_o is just div4 clock
-            self.specials += Instance("BUFG", i_I=cd_div4.clk, o_O=self.data_clk_o)
-
-            for idx, (line_delayed, dat_o) in enumerate(zip(lines_delayed, self.data_o)):
-                shift1 = Signal(name="shift1_{}".format(idx))
-                shift2 = Signal(name="shift2_{}".format(idx))
-                self.specials += Instance("ISERDESE2",
-                                          p_DATA_RATE="DDR",
-                                          p_DATA_WIDTH=10,
-                                          p_INTERFACE_TYPE="NETWORKING",
-                                          p_NUM_CE=1,
-                                          p_SERDES_MODE="MASTER",
-                                          p_IOBDELAY="BOTH",
-                                          o_Q1=dat_o[0], o_Q2=dat_o[1], o_Q3=dat_o[2], o_Q4=dat_o[3],
-                                          o_Q5=dat_o[4], o_Q6=dat_o[5], o_Q7=dat_o[6], o_Q8=dat_o[7],
-                                          o_SHIFTOUT1=shift1,
-                                          o_SHIFTOUT2=shift2,
-                                          o_O=Signal(name="output_test_master_{}".format(idx)),
-                                          i_DDLY=line_delayed,
-                                          i_CLK=lclk_bufio,
-                                          i_CLKB=~lclk_bufio,
-                                          i_CE1=1,
-                                          i_RST=ResetSignal("adclk_clkdiv"),
-                                          i_CLKDIV=ClockSignal("adclk_clkdiv"),
-                                          i_CLKDIVP=0,
-                                          i_BITSLIP=bitslip,
-                                          i_DYNCLKDIVSEL=0,
-                                          i_DYNCLKSEL=0)
-                self.specials += Instance("ISERDESE2",
-                                          p_DATA_RATE="DDR",
-                                          p_DATA_WIDTH=10,
-                                          p_INTERFACE_TYPE="NETWORKING",
-                                          p_NUM_CE=1,
-                                          p_SERDES_MODE="SLAVE",
-                                          p_IOBDELAY="BOTH",
-                                          o_Q3=dat_o[8], o_Q4=dat_o[9],
-                                          i_SHIFTIN1=shift1,
-                                          i_SHIFTIN2=shift2,
-                                          i_CLK=lclk_bufio,
-                                          i_CLKB=~lclk_bufio,
-                                          i_CE1=1,
-                                          i_RST=ResetSignal("adclk_clkdiv"),
-                                          i_CLKDIV=ClockSignal("adclk_clkdiv"),
-                                          i_CLKDIVP=0,
-                                          i_BITSLIP=bitslip,
-                                          i_DYNCLKDIVSEL=0,
-                                          i_DYNCLKSEL=0)
-        if resolution == "12b":
-            # For some unknown reasons Xilinx does not provide deserialization ratio of 1:12.
-            # Different approaches can be
-            raise NotImplementedError("`12b` serialization not implemented yet.")
+        for idx, (line_delayed, dat_o) in enumerate(zip(lines_delayed, self.data_o)):
+            shift1 = Signal(name="shift1_{}".format(idx))
+            shift2 = Signal(name="shift2_{}".format(idx))
+            self.specials += Instance("ISERDESE2",
+                                      p_DATA_RATE="DDR",
+                                      p_DATA_WIDTH=10,
+                                      p_INTERFACE_TYPE="NETWORKING",
+                                      p_NUM_CE=1,
+                                      p_SERDES_MODE="MASTER",
+                                      p_IOBDELAY="BOTH",
+                                      o_Q1=dat_o[0], o_Q2=dat_o[1], o_Q3=dat_o[2], o_Q4=dat_o[3],
+                                      o_Q5=dat_o[4], o_Q6=dat_o[5], o_Q7=dat_o[6], o_Q8=dat_o[7],
+                                      o_SHIFTOUT1=shift1,
+                                      o_SHIFTOUT2=shift2,
+                                      o_O=Signal(name="output_test_master_{}".format(idx)),
+                                      i_DDLY=line_delayed,
+                                      i_CLK=lclk_bufio,
+                                      i_CLKB=~lclk_bufio,
+                                      i_CE1=1,
+                                      i_RST=ResetSignal("adclk_clkdiv"),
+                                      i_CLKDIV=ClockSignal("adclk_clkdiv"),
+                                      i_CLKDIVP=0,
+                                      i_BITSLIP=bitslip,
+                                      i_DYNCLKDIVSEL=0,
+                                      i_DYNCLKSEL=0)
+            self.specials += Instance("ISERDESE2",
+                                      p_DATA_RATE="DDR",
+                                      p_DATA_WIDTH=10,
+                                      p_INTERFACE_TYPE="NETWORKING",
+                                      p_NUM_CE=1,
+                                      p_SERDES_MODE="SLAVE",
+                                      p_IOBDELAY="BOTH",
+                                      o_Q3=dat_o[8], o_Q4=dat_o[9],
+                                      i_SHIFTIN1=shift1,
+                                      i_SHIFTIN2=shift2,
+                                      i_CLK=lclk_bufio,
+                                      i_CLKB=~lclk_bufio,
+                                      i_CE1=1,
+                                      i_RST=ResetSignal("adclk_clkdiv"),
+                                      i_CLKDIV=ClockSignal("adclk_clkdiv"),
+                                      i_CLKDIVP=0,
+                                      i_BITSLIP=bitslip,
+                                      i_DYNCLKDIVSEL=0,
+                                      i_DYNCLKSEL=0)
 
 
 class SimulationWrapper(Module):

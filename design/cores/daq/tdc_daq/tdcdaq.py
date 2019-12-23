@@ -15,13 +15,11 @@ class TdcDaq(Module):
     This one is simple - put data into FIFO in data clock domain and take in rio_phy domain
     """
 
-    def __init__(self, data_width, channel_depth):
+    def __init__(self, data_i, stb_i, channel_depth):
+
+        data_width = len(data_i)
 
         assert data_width < 64
-
-        # Interface - data_clock domain signals
-        self.data_i = Signal(data_width)
-        self.stb_i = Signal()
 
         # Interface - rtlink
         rtlink_iface = rtlink.Interface(
@@ -35,8 +33,8 @@ class TdcDaq(Module):
             self.rtlink_channels.append(Channel(rtlink_iface_aux, ififo_depth=channel_depth))
 
         # Clock domains
-        self.clock_domains.cd_dclk = cd_dclk = ClockDomain("data_clock")
-        self.clock_domains.cd_rio_phy = cd_rio_phy = ClockDomain("rio_phy")
+        # self.clock_domains.cd_dclk = cd_dclk = ClockDomain("data_clock")
+        # self.clock_domains.cd_rio_phy = cd_rio_phy = ClockDomain("rio_phy")
 
         daq_start_rio = Signal()
         daq_start_dclk = Signal()
@@ -46,12 +44,12 @@ class TdcDaq(Module):
         daq_enabled_rio = Signal()
         daq_enabled_dclk = Signal()
 
-        self.submodules.daq_start_ps = daq_start_ps = PulseSynchronizer("rio_phy", "data_clock")
+        self.submodules.daq_start_ps = daq_start_ps = PulseSynchronizer("rio_phy", "dclk")
         self.comb += [
             daq_start_ps.i.eq(daq_start_rio),
             daq_start_dclk.eq(daq_start_ps.o)
         ]
-        self.submodules.daq_stop_ps = daq_stop_ps = PulseSynchronizer("rio_phy", "data_clock")
+        self.submodules.daq_stop_ps = daq_stop_ps = PulseSynchronizer("rio_phy", "dclk")
         self.comb += [
             daq_stop_ps.i.eq(daq_stop_rio),
             daq_stop_dclk.eq(daq_stop_ps.o)
@@ -67,17 +65,17 @@ class TdcDaq(Module):
             )
         ]
 
-        self.sync.data_clock += [
+        self.sync.dclk += [
             If(daq_start_dclk, daq_enabled_dclk.eq(1)).
             Elif(daq_stop_dclk, daq_enabled_dclk.eq(0))
         ]
 
         # FIFO
         fifo = AsyncFIFO(width=data_width, depth=16)
-        self.submodules += ClockDomainsRenamer({"write": "data_clock", "read": "rio_phy"})(fifo)
+        self.submodules += ClockDomainsRenamer({"write": "dclk", "read": "rio_phy"})(fifo)
 
-        self.comb += fifo.we.eq(self.stb_i & daq_enabled_dclk)
-        self.comb += fifo.din.eq(self.data_i)
+        self.comb += fifo.we.eq(stb_i & daq_enabled_dclk)
+        self.comb += fifo.din.eq(data_i)
 
         self.comb += fifo.re.eq(1)
         self.sync.rio_phy += [

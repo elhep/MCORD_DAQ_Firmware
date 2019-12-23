@@ -1,63 +1,74 @@
 from migen.build.xilinx.platform import XilinxPlatform
 from migen.build.generic_platform import *
+from migen.genlib.io import DifferentialInput
 from design.cores.common import *
-
-
-class SimulationWrapper(Module):
-
-    def __init__(self, platform, max_frame_length):
-        self.submodules.dut = dut = TdcGpx2Phy(max_frame_length=max_frame_length, frame_idelay=False)
-        self.submodules += XilinxIdelayctrl(platform.request("ref_clk_200MHz"))
-        self.comb += [
-            dut.data_clk_i.eq(platform.request("data_clk_i")),
-            dut.frame_i.eq(platform.request("frame_i")),
-            dut.data_i.eq(platform.request("data_i")),
-            dut.frame_length_i.eq(platform.request("frame_length_i")),
-            platform.request("data_o").eq(dut.data_o),
-            platform.request("stb_o").eq(dut.stb_o)
-        ]
+from migen.genlib.resetsync import AsyncResetSynchronizer
 
 
 class TdcGpx2Phy(Module):
 
-    def __init__(self, max_frame_length=44, frame_idelay=False):
+    def __init__(self, platform, data_clk_i, frame_signals_i, data_signals_i):
+
+        self.data_clk_o = Signal()
+        self.data_o = []
+        self.data_stb_o = []
+
+        ###
+
+        data_clk_to_bufr = Signal()
+        self.clock_domains.cd_dclk = cd_dclk = ClockDomain()  # !!!! Inverted!
+
+        self.specials += DifferentialInput(data_clk_i.p, data_clk_i.n, data_clk_to_bufr)
+        self.specials += Instance("BUFG", i_I=~data_clk_to_bufr, o_O=cd_dclk.clk)  # !!!! Inverted!
+        platform.add_period_constraint(cd_dclk.clk, 4.)
+
+        self.specials += [AsyncResetSynchronizer(cd_dclk, ResetSignal("sys"))]
+
+        for channel, (frame, data) in enumerate(zip(frame_signals_i, data_signals_i)):
+            frame_se = Signal()
+            data_se = Signal()
+            self.specials += DifferentialInput(frame.p, frame.n, frame_se)
+            self.specials += DifferentialInput(data.p, data.n, data_se)
+
+            channel_phy = ClockDomainsRenamer("dclk")(TdcGpx2ChannelPhy(frame_i=frame_se, data_i=data_se))
+            setattr(self.submodules, "channel{}".format(channel), channel_phy)
+            self.data_o.append(channel_phy.data_o)
+            self.data_stb_o.append(channel_phy.stb_o)
+
+
+class TdcGpx2ChannelPhy(Module, AutoCSR):
+
+    """
+    Single TDC GPX2 channel
+
+    This module runs in clock domain defined by TdcGpx2Phy module.
+    """
+
+    def __init__(self, frame_i, data_i, max_frame_length=44):
 
         # Interface definition
         # ==========================================
 
-        # Hardware signals
-        self.data_clk_i = Signal()
-        self.frame_i = Signal()
-        self.data_i = Signal()
-
         # Outputs
-        # TODO: describe clock domains
         self.data_o = Signal(max_frame_length)
         self.stb_o = Signal()
 
         # Config
-        self.frame_length_i = Signal(max=max_frame_length)
+        frame_length = CSRStorage(max_frame_length.bit_length())
 
         # Design
         # ==========================================
 
-        self.clock_domains.sys = ClockDomain()
-        self.comb += [self.sys.clk.eq(~self.data_clk_i)]
-
         frame = Signal(2)
         frame_in = Signal()
-        if frame_idelay:
-            self.submodules += XilinxIdelayE2(self.frame_i, frame_in)
-            # TODO: Add frame checking logic
-        else:
-            frame_in = self.frame_i
+        self.submodules += XilinxIdelayE2(data_i=frame_i, data_o=frame_in)
 
         self.sync += [frame.eq(frame << 1 | frame_in)]
         frame_start = Signal()
         self.comb += frame_start.eq(frame[0] & ~frame[1])
 
         data = Signal()
-        self.submodules += XilinxIdelayE2(self.data_i, data)
+        self.submodules += XilinxIdelayE2(data_i=data_i, data_o=data)
 
         data_q1 = Signal()
         data_q2 = Signal()
@@ -72,7 +83,7 @@ class TdcGpx2Phy(Module):
         bit_counter = Signal(max=max_frame_length)
         self.submodules.fsm = fsm = FSM(reset_state="IDLE")
         fsm.act("IDLE",
-                NextValue(bit_counter, self.frame_length_i),
+                NextValue(bit_counter, frame_length.storage),
                 NextValue(stb_reg, 0),
                 If(frame_start,
                    NextState("FRAMEACQ")
@@ -85,7 +96,7 @@ class TdcGpx2Phy(Module):
                    NextValue(shift_register_reg, shift_register),
                    NextValue(stb_reg, 1),
                    If(frame_start,
-                      NextValue(bit_counter, self.frame_length_i)
+                      NextValue(bit_counter, frame_length.storage)
                    ).Else(
                        NextState("IDLE"))
                 )
@@ -98,6 +109,21 @@ class TdcGpx2Phy(Module):
         self.comb += [
             self.data_o.eq(shift_register_reg),
             self.stb_o.eq(stb_reg)
+        ]
+
+
+class SimulationWrapper(Module):
+
+    def __init__(self, platform, max_frame_length):
+        self.submodules.dut = dut = TdcGpx2ChannelPhy(max_frame_length=max_frame_length, frame_idelay=False)
+        self.submodules += XilinxIdelayctrl(platform.request("ref_clk_200MHz"))
+        self.comb += [
+            dut.data_clk_i.eq(platform.request("data_clk_i")),
+            dut.frame_i.eq(platform.request("frame_i")),
+            dut.data_i.eq(platform.request("data_i")),
+            dut.frame_length_i.eq(platform.request("frame_length_i")),
+            platform.request("data_o").eq(dut.data_o),
+            platform.request("stb_o").eq(dut.stb_o)
         ]
 
 

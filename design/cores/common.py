@@ -1,9 +1,31 @@
 from migen import *
+from misoc.interconnect.csr import AutoCSR, CSRStorage
 
 
-class XilinxIdelayE2(Module):
-    def __init__(self, data_i, data_o, delay_i, delay_ld_i):
+class XilinxIdelayCtrl(Module):
 
+    def __init__(self, ref_clk_200M_i, rst_i, iodelay_group=None):
+        self.iodelay_group = iodelay_group
+        if self.iodelay_group is None:
+            self.iodelay_group = str(id(self))
+        self.rdy_o = Signal()
+        self.specials += Instance("IDELAYCTRL",
+                 i_REFCLK=ref_clk_200M_i,
+                 i_RST=rst_i,
+                 o_RDY=self.rdy_o)
+                 # attr={("IODELAY_GROUP", str(self.iodelay_group))})
+
+
+class XilinxIdelayE2(Module, AutoCSR):
+
+    def __init__(self, data_i, data_o, idelay_rdy=None):
+        delay_value = CSRStorage(5, name="delay_value")
+        delay_load = CSRStorage(1, name="delay_load")
+        reset = Signal()
+        if idelay_rdy is not None:
+            self.comb += reset.eq(idelay_rdy | ResetSignal())
+        else:
+            reset = ResetSignal()
         self.specials += Instance("IDELAYE2",
                                   # Parameters
                                   # p_INVCTRL_SEL="FALSE",           # Enable dynamic clock inversion (FALSE, TRUE)
@@ -20,13 +42,12 @@ class XilinxIdelayE2(Module):
                                   i_C=ClockSignal(),               # 1-bit input: Clock input
                                   i_CE=0,                          # 1-bit input: Active high enable increment/decrement input
                                   i_CINVCTRL=0,  # 1-bit input: Dynamic clock inversion input
-                                  i_CNTVALUEIN=delay_i,  # 5-bit input: Counter value input
+                                  i_CNTVALUEIN=delay_value.storage,  # 5-bit input: Counter value input
                                   i_IDATAIN=data_i,  # 1-bit input: Data input from the I/O
                                   i_INC=0,  # 1-bit input: Increment / Decrement tap delay input
-                                  i_LD=delay_ld_i,  # 1-bit input: Load IDELAY_VALUE input
+                                  i_LD=delay_load.storage,  # 1-bit input: Load IDELAY_VALUE input
                                   i_LDPIPEEN=0,  # 1-bit input: Enable PIPELINE register to load data input
-                                  i_REGRST=ResetSignal(),  # 1-bit input: Active-high reset tap-delay input
-        )
+                                  i_REGRST=reset)  # 1-bit input: Active-high reset tap-delay input
 
 
 class XilinxDDRInputImplS7(Module):
@@ -35,11 +56,4 @@ class XilinxDDRInputImplS7(Module):
                 p_DDR_CLK_EDGE=clk_edge,
                 i_C=clk, i_CE=1, i_S=0, i_R=0,
                 i_D=i, o_Q1=o1, o_Q2=o2,
-        )
-
-class XilinxIdelayctrl(Module):
-    def __init__(self, refclk):
-        self.rdy = Signal()
-        self.specials += Instance("IDELAYCTRL",
-                i_REFCLK=refclk, i_RST=ResetSignal(), o_RDY=self.rdy
         )
