@@ -30,5 +30,5 @@ in
       xorg.libXi
     ]);
     TARGET_AR="or1k-linux-ar";
-    PYTHONPATH="${repo}/modules/migen:${repo}/modules/misoc:${repo}/modules/artiq:${repo}/modules/liteiclink:${repo}/modules/cocotb";
+    shellHook = "source nix/fixpythonpath";
   }

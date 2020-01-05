@@ -26,11 +26,11 @@ class TdcDaq(Module):
             rtlink.OInterface(data_width=1, address_width=0),
             rtlink.IInterface(data_width=32, timestamped=True))
         self.rtlink_channels = [Channel(rtlink_iface, ififo_depth=channel_depth)]
-        if data_width > 32:
-            rtlink_iface_aux = rtlink.Interface(
-                rtlink.OInterface(data_width=1, address_width=0),
-                rtlink.IInterface(data_width=data_width-32, timestamped=True))
-            self.rtlink_channels.append(Channel(rtlink_iface_aux, ififo_depth=channel_depth))
+
+        rtlink_iface_aux = rtlink.Interface(
+            rtlink.OInterface(data_width=1, address_width=0),
+            rtlink.IInterface(data_width=data_width-32, timestamped=True))
+        self.rtlink_channels.append(Channel(rtlink_iface_aux, ififo_depth=channel_depth))
 
         # Clock domains
         # self.clock_domains.cd_dclk = cd_dclk = ClockDomain("data_clock")
@@ -80,19 +80,13 @@ class TdcDaq(Module):
         self.comb += fifo.re.eq(1)
         self.sync.rio_phy += [
             rtlink_iface.i.stb.eq(0),
+            rtlink_iface_aux.i.stb.eq(0),
             If(fifo.readable,
                rtlink_iface.i.stb.eq(1),
-               rtlink_iface.i.data.eq(fifo.dout[:32]))
+               rtlink_iface_aux.i.stb.eq(1),
+               rtlink_iface.i.data.eq(fifo.dout[:32])),
+               rtlink_iface_aux.i.data.eq(fifo.dout[32:])
         ]
-
-        if data_width > 32:
-            self.sync.rio_phy += [
-                rtlink_iface_aux.i.stb.eq(0),
-                If(fifo.readable,
-                    rtlink_iface_aux.i.data.eq(fifo.dout[32:]),
-                    rtlink_iface_aux.i.stb.eq(1)
-                )
-            ]
 
 
 class SimulationWrapper(Module):
@@ -139,7 +133,7 @@ class SimulationWrapper(Module):
 if __name__ == "__main__":
 
     from migen.build.xilinx import common
-    from design.simulation.common import update_tb
+    from gateware.simulation.common import update_tb
 
     module = SimulationWrapper()
     so = dict(common.xilinx_special_overrides)

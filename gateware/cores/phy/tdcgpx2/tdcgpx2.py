@@ -1,19 +1,26 @@
 from migen.build.xilinx.platform import XilinxPlatform
 from migen.build.generic_platform import *
 from migen.genlib.io import DifferentialInput
-from design.cores.common import *
+from gateware.cores.xilinx import *
 from migen.genlib.resetsync import AsyncResetSynchronizer
+
+from artiq.gateware import rtio
+from gateware.cores.rtlink_csr import RtLinkCSR
 
 
 class TdcGpx2Phy(Module):
 
     def __init__(self, platform, data_clk_i, frame_signals_i, data_signals_i):
 
+        # Outputs
+        # ==========================================
+
         self.data_clk_o = Signal()
         self.data_o = []
         self.data_stb_o = []
 
-        ###
+        # Design
+        # ==========================================
 
         data_clk_to_bufr = Signal()
         self.clock_domains.cd_dclk = cd_dclk = ClockDomain()  # !!!! Inverted!
@@ -24,6 +31,7 @@ class TdcGpx2Phy(Module):
 
         self.specials += [AsyncResetSynchronizer(cd_dclk, ResetSignal("sys"))]
 
+        self.rtio_channels = []
         for channel, (frame, data) in enumerate(zip(frame_signals_i, data_signals_i)):
             frame_se = Signal()
             data_se = Signal()
@@ -34,9 +42,10 @@ class TdcGpx2Phy(Module):
             setattr(self.submodules, "channel{}".format(channel), channel_phy)
             self.data_o.append(channel_phy.data_o)
             self.data_stb_o.append(channel_phy.stb_o)
+            self.rtio_channels.append(rtio.Channel.from_phy(channel_phy.csr))
 
 
-class TdcGpx2ChannelPhy(Module, AutoCSR):
+class TdcGpx2ChannelPhy(Module):
 
     """
     Single TDC GPX2 channel
@@ -46,29 +55,45 @@ class TdcGpx2ChannelPhy(Module, AutoCSR):
 
     def __init__(self, frame_i, data_i, max_frame_length=44):
 
-        # Interface definition
+        # Outputs
         # ==========================================
 
-        # Outputs
         self.data_o = Signal(max_frame_length)
         self.stb_o = Signal()
 
-        # Config
-        frame_length = CSRStorage(max_frame_length.bit_length())
+        # RTLink Control Status Registers
+        # ==========================================
+
+        regs = [
+            ("frame_length", max_frame_length.bit_length()),
+            ("frame_delay_value", 5),
+            ("data_delay_value", 5)
+        ]
+
+        csr = RtLinkCSR(regs, "tdc_gpx_channel_phy")
+        self.submodules.csr = csr
 
         # Design
         # ==========================================
 
         frame = Signal(2)
         frame_in = Signal()
-        self.submodules += XilinxIdelayE2(data_i=frame_i, data_o=frame_in)
+        self.submodules += ClockDomainsRenamer("rio_phy")(XilinxIdelayE2(
+            data_i=frame_i,
+            data_o=frame_in,
+            delay_value_i=csr.frame_delay_value,
+            delay_value_ld_i=csr.frame_delay_value_ld))
 
         self.sync += [frame.eq(frame << 1 | frame_in)]
         frame_start = Signal()
         self.comb += frame_start.eq(frame[0] & ~frame[1])
 
         data = Signal()
-        self.submodules += XilinxIdelayE2(data_i=data_i, data_o=data)
+        self.submodules += ClockDomainsRenamer("rio_phy")(XilinxIdelayE2(
+            data_i=data_i,
+            data_o=data,
+            delay_value_i=csr.data_delay_value,
+            delay_value_ld_i=csr.data_delay_value_ld))
 
         data_q1 = Signal()
         data_q2 = Signal()
@@ -83,7 +108,7 @@ class TdcGpx2ChannelPhy(Module, AutoCSR):
         bit_counter = Signal(max=max_frame_length)
         self.submodules.fsm = fsm = FSM(reset_state="IDLE")
         fsm.act("IDLE",
-                NextValue(bit_counter, frame_length.storage),
+                NextValue(bit_counter, csr.frame_length),
                 NextValue(stb_reg, 0),
                 If(frame_start,
                    NextState("FRAMEACQ")
@@ -96,7 +121,7 @@ class TdcGpx2ChannelPhy(Module, AutoCSR):
                    NextValue(shift_register_reg, shift_register),
                    NextValue(stb_reg, 1),
                    If(frame_start,
-                      NextValue(bit_counter, frame_length.storage)
+                      NextValue(bit_counter, csr.frame_length)
                    ).Else(
                        NextState("IDLE"))
                 )
@@ -145,7 +170,7 @@ class Platform(XilinxPlatform):
 
 if __name__ == "__main__":
     # Generate simulation source for Cocotb
-    from design.simulation.common import generate_cocotb_tb
+    from gateware.simulation.common import generate_cocotb_tb
     platform = Platform(44)
     module = SimulationWrapper(platform, max_frame_length=44)
     generate_cocotb_tb(platform, module)

@@ -3,22 +3,41 @@ from migen.build.generic_platform import *
 from migen.genlib.io import DifferentialInput
 from migen.genlib.resetsync import AsyncResetSynchronizer
 
-from design.cores.common import XilinxIdelayE2
-
+from gateware.cores.xilinx import XilinxIdelayE2
+from gateware.cores.rtlink_csr import RtLinkCSR
 
 
 class ADS5296A_XS7(Module):
 
     def __init__(self, platform, adclk_i, lclk_i, dat_i):
 
+        # Module constants
+        # ==========================================
+
         DAT_O_LEN = 10
         BUFR_DIVIDE = 5
         VALID_FRAME_OUT = 0b1111100000
 
         # Outputs
+        # ==========================================
+
         self.data_clk_o = Signal()
         self.bitslip_done = Signal()
         self.data_o = [Signal(DAT_O_LEN, name="data_{}_o".format(i)) for i in range(9)]
+
+        # RTLink Control Status Registers
+        # ==========================================
+
+        regs = [
+            *[("data{}_delay_value".format(x), 5) for x in range(8)],
+            ("adclk_delay_value", 5)
+        ]
+
+        csr = RtLinkCSR(regs, "ads5296a_phy")
+        self.submodules.csr = csr
+
+        # Design
+        # ==========================================
 
         input_lines = [*dat_i, adclk_i]
         lines_delayed = [Signal(name="line_delayed_{}".format(i)) for i in range(9)]
@@ -27,7 +46,12 @@ class ADS5296A_XS7(Module):
             self.specials += DifferentialInput(i_p=input_line.p,
                                                i_n=input_line.n,
                                                o=line_buffer)
-            self.submodules += XilinxIdelayE2(data_i=line_buffer, data_o=line_delayed)
+            self.submodules += XilinxIdelayE2(
+                data_i=line_buffer,
+                data_o=line_delayed,
+                delay_value_i=getattr(csr, regs[idx][0]),
+                delay_value_ld_i=getattr(csr, regs[idx][0]+"_ld")
+            )
 
         # Clocking
         lclk_ibuf = Signal()
@@ -156,7 +180,7 @@ class SimulationWrapper(Module):
 if __name__ == "__main__":
 
     from migen.build.xilinx import common
-    from design.simulation.common import update_tb
+    from gateware.simulation.common import update_tb
 
     module = SimulationWrapper()
     so = dict(common.xilinx_special_overrides)
@@ -166,8 +190,8 @@ if __name__ == "__main__":
                     name="top",
                     special_overrides=so,
                     ios=module.io,
-                    create_clock_domains=False).write('design/cores/phy/ads5296a/tests/ADS5296A_XS7.v')
-    # update_tb('design/cores/tests/adc_phy_daq/adc_phy_daq.v')
+                    create_clock_domains=False).write('gateware/cores/phy/ads5296a/tests/ADS5296A_XS7.v')
+    # update_tb('gateware/cores/tests/adc_phy_daq/adc_phy_daq.v')
 
 
 

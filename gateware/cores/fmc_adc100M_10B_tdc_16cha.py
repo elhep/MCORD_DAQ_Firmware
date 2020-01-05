@@ -8,13 +8,13 @@ from artiq.gateware.rtio.phy.spi2 import SPIMaster
 from misoc.cores import gpio
 from artiq.gateware import rtio
 
-from design.cores.phy.ads5296a.ads5296a import ADS5296A_XS7
-from design.cores.phy.tdcgpx2.tdcgpx2 import TdcGpx2Phy
+from gateware.cores.phy.ads5296a.ads5296a import ADS5296A_XS7
+from gateware.cores.phy.tdcgpx2.tdcgpx2 import TdcGpx2Phy
 
-from design.cores.daq.adc_daq.adc_phy_daq import AdcPhyDaq
-from design.cores.daq.tdc_daq.tdcdaq import TdcDaq
+from gateware.cores.daq.adc_daq.adc_phy_daq import AdcPhyDaq
+from gateware.cores.daq.tdc_daq.tdcdaq import TdcDaq
 
-from design.cores.common import *
+from gateware.cores.xilinx import *
 
 
 class TristateDs(Module):
@@ -167,11 +167,7 @@ class FmcAdc100M10b16chaTdc(_FMC):
         target.submodules.i2c = gpio.GPIOTristate([dac_i2c.scl, dac_i2c.sda])
         target.csr_devices.append("i2c")
 
-        if with_trig:
-            pads = target.platform.request(cls.signal_name("trig", fmc))
-            phy = ttl_serdes_7series.InOut_8X(pads.p, pads.n)
-            target.submodules += phy
-            target.add_rtio_channels(rtio.Channel.from_phy(phy, ififo_depth=64), "fmc{}_trig (InOut_8X)".format(fmc))
+
 
         for i in range(4):
             pads = target.platform.request(cls.signal_name("tdc_dis", fmc), i)
@@ -222,6 +218,10 @@ class FmcAdc100M10b16chaTdc(_FMC):
                 dat_i=[target.platform.request(cls.signal_name("adc_out_out{}".format(i), fmc), adc_id) for i in range(8)])
             phy_renamed_cd = ClockDomainsRenamer({"adclk_clkdiv": dclk_name})(phy)
             setattr(target.submodules, "fmc{}_adc{}_phy".format(fmc, adc_id), phy_renamed_cd)
+            target.add_rtio_channels(
+                rtio.Channel.from_phy(phy.csr),
+                "fmc{}_adc{} (ADS5296APhy)".format(fmc, adc_id)
+            )
 
             for channel in range(8):
                 daq = ClockDomainsRenamer({"dclk": dclk_name})(AdcPhyDaq(
@@ -245,6 +245,9 @@ class FmcAdc100M10b16chaTdc(_FMC):
                              data_signals_i=ds)
             phy_renamed_cd = ClockDomainsRenamer({"dclk": dclk_name})(phy)
             setattr(target.submodules, "fmc{}_tdc{}_phy".format(fmc, tdc_id), phy_renamed_cd)
+            target.add_rtio_channels(
+                phy.rtio_channels,
+                ["fmc{}_tdc{}_phy_ch{} (TdcGpx2PhyChannel)".format(fmc, tdc_id, ch) for ch in range(4)])
 
             for channel in range(4):
                 daq = TdcDaq(data_i=phy.data_o[channel],
@@ -255,3 +258,9 @@ class FmcAdc100M10b16chaTdc(_FMC):
                 target.add_rtio_channels(daq.rtlink_channels,
                                          ["fmc{}_tdc{}_daq{}_msb (TdcDaq)".format(fmc, tdc_id, channel),
                                           "fmc{}_tdc{}_daq{}_lsb (TdcDaq)".format(fmc, tdc_id, channel)])
+
+        if with_trig:
+            pads = target.platform.request(cls.signal_name("trig", fmc))
+            phy = ttl_serdes_7series.InOut_8X(pads.p, pads.n)
+            target.submodules += phy
+            target.add_rtio_channels(rtio.Channel.from_phy(phy, ififo_depth=64), "fmc{}_trig (InOut_8X)".format(fmc))

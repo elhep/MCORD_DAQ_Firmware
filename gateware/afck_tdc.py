@@ -2,7 +2,7 @@ import argparse
 
 from artiq.build_soc import build_artiq_soc
 from artiq.gateware.targets.afck1v1 import StandaloneBase, iostd_single, iostd_diff
-from design.cores.fmc_adc100M_10B_tdc_16cha import FmcAdc100M10b16chaTdc
+from gateware.cores.fmc_adc100M_10B_tdc_16cha import FmcAdc100M10b16chaTdc
 from misoc.integration.builder import builder_args, builder_argdict
 from misoc.targets.afck1v1 import soc_afck1v1_argdict, soc_afck1v1_args
 

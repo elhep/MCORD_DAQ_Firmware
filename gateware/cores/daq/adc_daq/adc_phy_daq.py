@@ -19,9 +19,6 @@ class AdcPhyDaq(Module):
           1: pretrigger[23:12], posttrigger[11:0]
         """
 
-        # self.clock_domains.dclk = cd_dclk = ClockDomain("dclk")
-        # self.comb += cd_dclk.clk.eq(data_clk)
-
         # --------------------------------------------------------------------------------------------------------------
         # Sample memory
 
@@ -34,8 +31,8 @@ class AdcPhyDaq(Module):
         # Data clock domain
 
         trigger_dclk = Signal()
-        pretrigger_len_dclk = Signal(max=max_samples)
-        posttrigger_len_dclk = Signal(max=max_samples)
+        pretrigger_len_dclk = Signal(max=max_samples, reset=16)
+        posttrigger_len_dclk = Signal(max=max_samples, reset=16)
 
         current_address_dclk = Signal.like(memory_write_port.adr, reset=0)
         data_start_address_dclk = Signal.like(current_address_dclk)
@@ -210,7 +207,7 @@ class SimulationWrapper(Module):
 if __name__ == "__main__":
 
     from migen.build.xilinx import common
-    from design.simulation.common import update_tb
+    from gateware.simulation.common import update_tb
 
     module = SimulationWrapper()
     so = dict(common.xilinx_special_overrides)
@@ -220,5 +217,5 @@ if __name__ == "__main__":
                     name="top",
                     special_overrides=so,
                     ios=module.io,
-                    create_clock_domains=False).write('design/cores/tests/adc_phy_daq/adc_phy_daq.v')
-    update_tb('design/cores/tests/adc_phy_daq/adc_phy_daq.v')
+                    create_clock_domains=False).write('gateware/cores/tests/adc_phy_daq/adc_phy_daq.v')
+    update_tb('gateware/cores/tests/adc_phy_daq/adc_phy_daq.v')
