@@ -1,0 +1,1 @@
+artiq_flash -d ./ --srcbuild -V build -t afck1v1 $*

@@ -8,7 +8,7 @@ from coredevice.tdc_gpx2 import TDCGPX2
 
 class FmcAdc100M10bTdc16cha:
 
-    def __init__(self, dmgr, channel, with_trig, clock_setup=None, core_device="core"):
+    def __init__(self, dmgr, channel, with_trig, core_device="core"):
         self.channel = channel
         self.core = dmgr.get(core_device)
         self.ref_period_mu = self.core.seconds_to_mu(
@@ -30,16 +30,21 @@ class FmcAdc100M10bTdc16cha:
         self.tdc_spi = spi.SPIMaster(dmgr, self.channel + 11, core_device=core_device)
 
         self.adc = [
-            ADS5296A(dmgr, self.channel + 13 + i*9, self.adc_spi, i, core_device=core_device) for i in range(2)
+            ADS5296A(dmgr, self.channel + 13 + i*9, self.adc_spi, 1 << i, core_device=core_device) for i in range(2)
         ]
         self.tdc = [
-            TDCGPX2(dmgr, self.channel + 31 + i*12, self.tdc_spi, i, core_device=core_device) for i in range(4)
+            TDCGPX2(dmgr, self.channel + 31 + i*12, self.tdc_spi, i << (3-i), core_device=core_device) for i in range(4)
         ]
 
         if with_trig:
             self.trig = TTLInOut(dmgr, channel + 79, core_device)
 
-        self.clock = AD9528(dmgr, self.tdc_spi, 4, config=AD9528_DEFAULT_CONFIG, core_device=core_device)
+        self.clock = AD9528(dmgr=dmgr,
+                            spi_device=self.tdc_spi,
+                            chip_select=1,
+                            spi_freq=5_000_000,
+                            config=AD9528_DEFAULT_CONFIG,
+                            core_device=core_device)
 
     def initialize(self):
         self.clock.initialize()
