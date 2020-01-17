@@ -4,6 +4,7 @@ from coredevice.ad9528 import AD9528
 from coredevice.ad9528_default_config import AD9528_DEFAULT_CONFIG
 from coredevice.ads5296a import ADS5296A
 from coredevice.tdc_gpx2 import TDCGPX2
+from artiq.language.core import kernel
 
 
 class FmcAdc100M10bTdc16cha:
@@ -29,22 +30,32 @@ class FmcAdc100M10bTdc16cha:
         self.adc_spi = spi.SPIMaster(dmgr, self.channel + 12, core_device=core_device)
         self.tdc_spi = spi.SPIMaster(dmgr, self.channel + 11, core_device=core_device)
 
+        self.tdc_csn = [TTLOut(dmgr, self.channel + 79 + i, core_device) for i in range(4)]
+        self.clock_csn = TTLOut(dmgr, self.channel + 79 + 4, core_device)
+        self.adc_csn = [TTLOut(dmgr, self.channel + 79 + 5 + i, core_device) for i in range(2)]
+
         self.adc = [
             ADS5296A(dmgr, self.channel + 13 + i*9, self.adc_spi, 1 << i, core_device=core_device) for i in range(2)
         ]
         self.tdc = [
-            TDCGPX2(dmgr, self.channel + 31 + i*12, self.tdc_spi, i << (3-i), core_device=core_device) for i in range(4)
+            TDCGPX2(dmgr, self.channel + 31 + i*12, self.tdc_spi, self.tdc_csn[i], core_device=core_device) for i in range(4)
         ]
 
         if with_trig:
-            self.trig = TTLInOut(dmgr, channel + 79, core_device)
+            self.trig = TTLInOut(dmgr, channel + 86, core_device)
 
         self.clock = AD9528(dmgr=dmgr,
                             spi_device=self.tdc_spi,
-                            chip_select=1,
+                            chip_select=self.clock_csn,
                             spi_freq=5_000_000,
                             config=AD9528_DEFAULT_CONFIG,
                             core_device=core_device)
-
+    @kernel
     def initialize(self):
-        self.clock.initialize()
+        for ttl in self.tdc_csn:
+            ttl.on()
+        self.clock_csn.on()
+        for ttl in self.adc_csn:
+            ttl.on()
+
+        # self.clock.initialize()

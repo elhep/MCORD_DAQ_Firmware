@@ -10,15 +10,26 @@ class TestComm(EnvExperiment):
     @kernel
     def run(self):
         self.core.break_realtime()
-        self.fmc1.adc_resetn.off()
-        delay(1 * ms)
-        self.fmc1.adc_resetn.on()
-        delay(1 * ms)
-        self.fmc1.clock.write(0x0, 0b00011000)
-        self.fmc1.clock.write(0xf, 1)
-        delay(1*ms)
+        self.fmc1.initialize()
+
+
+
+        addr = [0x3, 0x4, 0x5]
+
         while True:
-            for i in range(0x3, 0xF):
+
+            self.core.break_realtime()
+
+            self.fmc1.adc_resetn.off()
+            delay(1 * ms)
+            self.fmc1.adc_resetn.on()
+            delay(1 * ms)
+
+            self.fmc1.clock.config_interface()
+            self.fmc1.clock.write(0xF, 1)
+
+
+            for a in addr:
                 self.core.break_realtime()
-                vid0 = self.fmc1.clock.read(0xc)
-                print(i, vid0)
+                print(a, self.fmc1.clock.read(a))
+            print("------------------------------")

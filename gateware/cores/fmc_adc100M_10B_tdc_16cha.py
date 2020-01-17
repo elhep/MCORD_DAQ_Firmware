@@ -167,8 +167,6 @@ class FmcAdc100M10b16chaTdc(_FMC):
         target.submodules.i2c = gpio.GPIOTristate([dac_i2c.scl, dac_i2c.sda])
         target.csr_devices.append("i2c")
 
-
-
         for i in range(4):
             pads = target.platform.request(cls.signal_name("tdc_dis", fmc), i)
             phy = Output(pads.p, pads.n)
@@ -189,7 +187,8 @@ class FmcAdc100M10b16chaTdc(_FMC):
         tdc_spi_pads.clk = tdc_spi.sck
         tdc_spi_pads.miso = tdc_spi.miso
         tdc_spi_pads.mosi = tdc_spi.mosi
-        tdc_spi_pads.cs_n = Cat(*[target.platform.request(cls.signal_name("tdc_spi_csn", fmc), i) for i in range(5)])
+        tdc_spi_pads.cs_n = Signal(5)
+        # tdc_spi_pads.cs_n = Cat(*[target.platform.request(cls.signal_name("tdc_spi_csn", fmc), i) for i in range(5)])
 
         phy = SPIMaster(tdc_spi_pads)
         target.submodules += phy
@@ -200,7 +199,8 @@ class FmcAdc100M10b16chaTdc(_FMC):
         adc_spi_pads.clk = adc_spi.sck
         adc_spi_pads.miso = adc_spi.miso
         adc_spi_pads.mosi = adc_spi.mosi
-        adc_spi_pads.cs_n = Cat(*[target.platform.request(cls.signal_name("adc_spi_csn", fmc), i) for i in range(2)])
+        adc_spi_pads.cs_n = Signal(2)
+        # adc_spi_pads.cs_n = Cat(*[target.platform.request(cls.signal_name("adc_spi_csn", fmc), i) for i in range(2)])
 
         phy = SPIMaster(adc_spi_pads)
         target.submodules += phy
@@ -258,6 +258,16 @@ class FmcAdc100M10b16chaTdc(_FMC):
                 target.add_rtio_channels(daq.rtlink_channels,
                                          ["fmc{}_tdc{}_daq{}_msb (TdcDaq)".format(fmc, tdc_id, channel),
                                           "fmc{}_tdc{}_daq{}_lsb (TdcDaq)".format(fmc, tdc_id, channel)])
+
+        csn_pads = [
+            *[target.platform.request(cls.signal_name("tdc_spi_csn", fmc), i) for i in range(5)],
+            *[target.platform.request(cls.signal_name("adc_spi_csn", fmc), i) for i in range(2)]
+        ]
+
+        for i, pad in enumerate(csn_pads):
+            phy = Output(pad)
+            target.submodules += phy
+            target.add_rtio_channels(rtio.Channel.from_phy(phy), "fmc{}_csn{} (Output)".format(fmc, i))
 
         if with_trig:
             pads = target.platform.request(cls.signal_name("trig", fmc))
