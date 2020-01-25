@@ -3,3 +3,4 @@ results.xml
 build/**
 sim_build/**
 adc_phy_daq.v
+memory.init

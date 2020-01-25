@@ -188,11 +188,14 @@ class SimulationWrapper(Module):
         self.data = Signal(10)
 
         self.clock_domains.cd_rio_phy = cd_rio_phy = ClockDomain()
+        self.clock_domains.cd_dclk = cd_dclk = ClockDomain()
+
+        self.comb += [cd_dclk.clk.eq(self.data_clk)]
 
         self.submodules.dut = dut = AdcPhyDaq(self.data_clk, self.data, 2048)
 
         self.io = {
-            self.dut.dclk.rst,
+            cd_dclk.rst,
             self.data_clk,
             self.data,
             cd_rio_phy.clk,
@@ -217,5 +220,5 @@ if __name__ == "__main__":
                     name="top",
                     special_overrides=so,
                     ios=module.io,
-                    create_clock_domains=False).write('gateware/cores/tests/adc_phy_daq/adc_phy_daq.v')
-    update_tb('gateware/cores/tests/adc_phy_daq/adc_phy_daq.v')
+                    create_clock_domains=False).write("adc_phy_daq.v")
+    update_tb("adc_phy_daq.v")

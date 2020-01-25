@@ -19,12 +19,12 @@ class TbTdcGpx2Daq:
         self.dut = dut
 
         cocotb.fork(Clock(self.dut.rio_phy_clk, 8000).start())
-        cocotb.fork(Clock(self.dut.data_clock_clk, 10000).start())
+        cocotb.fork(Clock(self.dut.dclk_clk, 10000).start())
 
         self.rtio_re = RisingEdge(self.dut.rio_phy_clk)
         self.rtio_fe = FallingEdge(self.dut.rio_phy_clk)
-        self.dclk_re = RisingEdge(self.dut.data_clock_clk)
-        self.dclk_fe = FallingEdge(self.dut.data_clock_clk)
+        self.dclk_re = RisingEdge(self.dut.dclk_clk)
+        self.dclk_fe = FallingEdge(self.dut.dclk_clk)
 
         self.rtlink = {
             "main": {
@@ -88,19 +88,19 @@ class TbTdcGpx2Daq:
     def reset(self):
         self.dut.data_i <= 0
         self.dut.data_stb_i <= 0
-        self.dut.data_clock_rst <= 0
+        self.dut.dclk_rst <= 0
         self.dut.rio_phy_rst <= 0
 
         self.dut._log.info("Waiting initial 120 ns")
         yield Timer(120, 'ns')
         self.dut._log.info("Starting reset... ")
-        self.dut.data_clock_rst <= 1
+        self.dut.dclk_rst <= 1
         self.dut.rio_phy_rst <= 1
         yield Combine(self.dclk_re, self.rtio_re)
         yield Combine(self.dclk_re, self.rtio_re)
         yield Combine(self.dclk_re, self.rtio_re)
         yield Combine(self.dclk_re, self.rtio_re)
-        self.dut.data_clock_rst <= 0
+        self.dut.dclk_rst <= 0
         self.dut.rio_phy_rst <= 0
         self.dut._log.info("Reset finished")
 
@@ -176,11 +176,3 @@ def test(dut):
 
     for s in [0, 1, 100]:
         yield tb.run_for_separation(s)
-
-    
-
-# @cocotb.test()
-# def consecutive_operations_test(dut):
-
-
-

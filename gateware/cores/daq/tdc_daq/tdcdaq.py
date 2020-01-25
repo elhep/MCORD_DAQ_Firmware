@@ -95,10 +95,17 @@ class SimulationWrapper(Module):
 
         data_width = 44
 
-        self.submodules.dut = dut = TdcDaq(data_width, 1024)
+        data_i = Signal(bits_sign=data_width, name="data_i")
+        stb_i  = Signal(name="data_stb_i")
 
-        dut.data_i.name_override = "data_i"
-        dut.stb_i.name_override = "data_stb_i"
+        self.data_clk = Signal(name="dclk_clk")
+
+        self.clock_domains.cd_rio_phy = cd_rio_phy = ClockDomain()
+        self.clock_domains.cd_dclk = cd_dclk = ClockDomain()
+
+        self.comb += [cd_dclk.clk.eq(self.data_clk)]
+
+        self.submodules.dut = dut = TdcDaq(data_i, stb_i, 1024)
 
         dut.rtlink_channels[0].interface.o.stb.name_override = "rtlink_stb_i"
         dut.rtlink_channels[0].interface.o.data.name_override = "rtlink_data_i"
@@ -110,14 +117,14 @@ class SimulationWrapper(Module):
         dut.rtlink_channels[1].interface.i.data.name_override = "rtlink_aux_data_o"
 
         self.io = {
-            dut.cd_dclk.clk,
-            dut.cd_dclk.rst,
+            cd_dclk.clk,
+            cd_dclk.rst,
 
-            dut.data_i,
-            dut.stb_i,
+            data_i,
+            stb_i,
 
-            dut.cd_rio_phy.clk,
-            dut.cd_rio_phy.rst,
+            cd_rio_phy.clk,
+            cd_rio_phy.rst,
 
             dut.rtlink_channels[0].interface.o.stb,
             dut.rtlink_channels[0].interface.o.data,
@@ -143,5 +150,5 @@ if __name__ == "__main__":
                     name="top",
                     special_overrides=so,
                     ios=module.io,
-                    create_clock_domains=False).write('tests/tdc_gpx2_daq.v')
-    update_tb('tests/tdc_gpx2_daq.v')
+                    create_clock_domains=False).write('tdc_gpx2_daq.v')
+    update_tb('tdc_gpx2_daq.v')

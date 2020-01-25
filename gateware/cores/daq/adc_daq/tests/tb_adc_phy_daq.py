@@ -81,7 +81,7 @@ class TbAdcPhyDac:
 
         while True:
             # Acqire pretrigger samples
-            while self.dut.dut_trig_re_dclk != 1:
+            while self.dut.trig_re_dclk != 1:
                 yield self.dclk_re
                 # This is basically a bad idea, but we don't expect to have A LOT of samples
                 pretrigger_samples = [*pretrigger_samples[1:], self.dut.data.value.binstr]
@@ -182,7 +182,7 @@ def trigger_position_test(dut):
 
     combinations = [
         [1, 2],
-        # [2, 2],
+        [2, 2],
         [3, 2],
         [100, 2],
         [2000, 2],
