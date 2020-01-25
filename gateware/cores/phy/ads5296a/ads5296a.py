@@ -190,7 +190,7 @@ if __name__ == "__main__":
                     name="top",
                     special_overrides=so,
                     ios=module.io,
-                    create_clock_domains=False).write('gateware/cores/phy/ads5296a/tests/ADS5296A_XS7.v')
+                    create_clock_domains=False).write('ADS5296A_XS7.v')
     # update_tb('gateware/cores/tests/adc_phy_daq/adc_phy_daq.v')
 
 

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-(cd ../../../../../; python -m gateware.cores.phy.ads5296a.ads5296a)
+python -m gateware.cores.phy.ads5296a.ads5296a
 
 if [ -z "$XILINX_VIVADO" ]
 then

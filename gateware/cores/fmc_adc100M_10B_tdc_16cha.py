@@ -239,8 +239,7 @@ class FmcAdc100M10b16chaTdc(_FMC):
             dclk_name = "fmc{}_tdc{}_dclk".format(fmc, tdc_id)
             fs = [target.platform.request(cls.signal_name("tdc_out_frame{}".format(i), fmc), tdc_id) for i in range(4)]
             ds = [target.platform.request(cls.signal_name("tdc_out_sdo{}".format(i), fmc), tdc_id) for i in range(4)]
-            phy = TdcGpx2Phy(platform=target.platform,
-                             data_clk_i=target.platform.request(cls.signal_name("tdc_out_lclkout", fmc), tdc_id),
+            phy = TdcGpx2Phy(data_clk_i=target.platform.request(cls.signal_name("tdc_out_lclkout", fmc), tdc_id),
                              frame_signals_i=fs,
                              data_signals_i=ds)
             phy_renamed_cd = ClockDomainsRenamer({"dclk": dclk_name})(phy)
@@ -274,3 +273,5 @@ class FmcAdc100M10b16chaTdc(_FMC):
             phy = ttl_serdes_7series.InOut_8X(pads.p, pads.n)
             target.submodules += phy
             target.add_rtio_channels(rtio.Channel.from_phy(phy, ififo_depth=64), "fmc{}_trig (InOut_8X)".format(fmc))
+
+        # TODO: Add timing constraints

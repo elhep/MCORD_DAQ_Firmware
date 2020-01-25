@@ -10,7 +10,7 @@ from gateware.cores.rtlink_csr import RtLinkCSR
 
 class TdcGpx2Phy(Module):
 
-    def __init__(self, platform, data_clk_i, frame_signals_i, data_signals_i):
+    def __init__(self, data_clk_i, frame_signals_i, data_signals_i):
 
         # Outputs
         # ==========================================
@@ -27,7 +27,7 @@ class TdcGpx2Phy(Module):
 
         self.specials += DifferentialInput(data_clk_i.p, data_clk_i.n, data_clk_to_bufr)
         self.specials += Instance("BUFG", i_I=~data_clk_to_bufr, o_O=cd_dclk.clk)  # !!!! Inverted!
-        platform.add_period_constraint(cd_dclk.clk, 4.)
+        # platform.add_period_constraint(cd_dclk.clk, 4.)
 
         self.specials += [AsyncResetSynchronizer(cd_dclk, ResetSignal("sys"))]
 
@@ -139,38 +139,61 @@ class TdcGpx2ChannelPhy(Module):
 
 class SimulationWrapper(Module):
 
-    def __init__(self, platform, max_frame_length):
-        self.submodules.dut = dut = TdcGpx2ChannelPhy(max_frame_length=max_frame_length, frame_idelay=False)
-        self.submodules += XilinxIdelayctrl(platform.request("ref_clk_200MHz"))
-        self.comb += [
-            dut.data_clk_i.eq(platform.request("data_clk_i")),
-            dut.frame_i.eq(platform.request("frame_i")),
-            dut.data_i.eq(platform.request("data_i")),
-            dut.frame_length_i.eq(platform.request("frame_length_i")),
-            platform.request("data_o").eq(dut.data_o),
-            platform.request("stb_o").eq(dut.stb_o)
+    def __init__(self):
+
+        def add_diff_signal(name):
+            setattr(self, name, Signal(name=name))
+            sig = getattr(self, name)
+            setattr(sig, "p", Signal(name=name+"_p"))
+            setattr(sig, "n", Signal(name=name+"_n"))
+            return [getattr(sig, "p"), getattr(sig, "n")]
+
+        self.clock_domains.cd_rio_phy = cd_rio_phy = ClockDomain()
+        self.clock_domains.cd_sys = cd_sys = ClockDomain()
+
+        self.io = [
+            cd_rio_phy.clk,
+            cd_rio_phy.rst,
+            cd_sys.rst
         ]
+        self.io += add_diff_signal("dclk")
+        for i in range(4):
+            self.io += add_diff_signal("frame{}".format(i))
+            self.io += add_diff_signal("data{}".format(i))
 
+        self.submodules.dut = dut = TdcGpx2Phy(self.dclk, [getattr(self, "frame{}".format(i)) for i in range(4)],
+                                         [getattr(self,  "data{}".format(i)) for i in range(4)])
 
-class Platform(XilinxPlatform):
-    # default_clk_name = "clk"
+        for idx, ch in enumerate(dut.rtio_channels):
+            ch.interface.o.stb.name_override = "rtlink{}_stb_i".format(idx)
+            ch.interface.o.data.name_override = "rtlink{}_data_i".format(idx)
+            ch.interface.o.address.name_override = "rtlink{}_address_i".format(idx)
 
-    def __init__(self, frame_length):
-        XilinxPlatform.__init__(self, "xc7", [
-            # ("clk", 0, Pins("X")),
-            ("data_clk_i", 0, Pins("X")),
-            ("ref_clk_200MHz", 0, Pins("X")),
-            ("frame_i", 0, Pins("X")),
-            ("data_i", 0, Pins("X")),
-            ("data_o", 0, Pins(" ".join(["X"]*frame_length))),
-            ("stb_o", 0, Pins("X")),
-            ("frame_length_i", 0, Pins(" ".join(['X']*6)))
-        ])
+            ch.interface.i.stb.name_override = "rtlink{}_stb_o".format(idx)
+            ch.interface.i.data.name_override = "rtlink{}_data_o".format(idx)
+
+            self.io += [
+                ch.interface.o.stb,
+                ch.interface.o.data,
+                ch.interface.o.address,
+                ch.interface.i.stb,
+                ch.interface.i.data,
+            ]
 
 
 if __name__ == "__main__":
+
     # Generate simulation source for Cocotb
-    from gateware.simulation.common import generate_cocotb_tb
-    platform = Platform(44)
-    module = SimulationWrapper(platform, max_frame_length=44)
-    generate_cocotb_tb(platform, module)
+    from migen.build.xilinx import common
+    from gateware.simulation.common import update_tb
+
+    module = SimulationWrapper()
+    so = dict(common.xilinx_special_overrides)
+    so.update(common.xilinx_s7_special_overrides)
+
+    verilog.convert(fi=module,
+                    name="top",
+                    special_overrides=so,
+                    ios={*module.io},
+                    create_clock_domains=False).write('tdc_gpx2.v')
+    update_tb('tdc_gpx2.v')
