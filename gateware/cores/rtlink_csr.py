@@ -25,31 +25,31 @@ class RtLinkCSR(Module):
         write_enable = self.rtlink.o.address[0]
         address = self.rtlink.o.address[1:]
 
-        self.sync.rio_phy += [
-            self.rtlink.i.stb.eq(1),
-            If(self.rtlink.o.stb & ~write_enable,
-               self.rtlink.i.stb.eq(1))
-        ]
-
         data_signals_list = []
         txt_output = "Address, Name, Length\n"
         for idx, r in enumerate(regs):
-            signal = Signal(r[1])
+            signal = Signal(bits_sign=r[1], name=r[0])
             setattr(self, r[0], signal)
             data_signals_list.append(signal)
-            setattr(self, r[0] + "_ld", Signal(r[1]))
-            ld_signal = getattr(self, r[0] + "_ld")
+            ld_signal_name = r[0] + "_ld"
+            setattr(self, ld_signal_name, Signal(bits_sign=1, name=ld_signal_name))
+            ld_signal = getattr(self, ld_signal_name)
             txt_output += "{}, {}, {}\n".format(idx, *r)
 
             self.sync.rio_phy += [
                 ld_signal.eq(0),
-                If(self.rtlink.o.stb & write_enable & address == idx,
+                If(self.rtlink.o.stb & write_enable & (address == idx),
                    signal.eq(self.rtlink.o.data),
                    ld_signal.eq(1))
             ]
 
         data_signals = Array(data_signals_list)
-        self.comb += self.rtlink.i.data.eq(data_signals[address])
+        self.sync.rio_phy += [
+            self.rtlink.i.stb.eq(0),
+            If(self.rtlink.o.stb & ~write_enable,
+               self.rtlink.i.stb.eq(1),
+               self.rtlink.i.data.eq(data_signals[address]))
+        ]
 
         with open(os.path.join(self.output_dir, "rtlinkcsr_{}.txt".format(self.name)), 'w') as f:
             f.write(txt_output)

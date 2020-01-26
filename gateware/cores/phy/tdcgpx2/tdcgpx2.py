@@ -15,7 +15,7 @@ class TdcGpx2Phy(Module):
         # Outputs
         # ==========================================
 
-        self.data_clk_o = Signal()
+        self.data_clk_o = Signal(name="data_clk_o")
         self.data_o = []
         self.data_stb_o = []
 
@@ -58,8 +58,8 @@ class TdcGpx2ChannelPhy(Module):
         # Outputs
         # ==========================================
 
-        self.data_o = Signal(max_frame_length)
-        self.stb_o = Signal()
+        self.data_o = Signal(max_frame_length, name="data_o")
+        self.stb_o = Signal(name="data_stb_o")
 
         # RTLink Control Status Registers
         # ==========================================
@@ -88,27 +88,28 @@ class TdcGpx2ChannelPhy(Module):
         frame_start = Signal()
         self.comb += frame_start.eq(frame[0] & ~frame[1])
 
-        data = Signal()
+        data_delayed = Signal()
         self.submodules += ClockDomainsRenamer("rio_phy")(XilinxIdelayE2(
             data_i=data_i,
-            data_o=data,
+            data_o=data_delayed,
             delay_value_i=csr.data_delay_value,
             delay_value_ld_i=csr.data_delay_value_ld))
 
         data_q1 = Signal()
         data_q2 = Signal()
         data_q1q2 = Signal(2)
-        self.submodules += XilinxDDRInputImplS7(i=data, o1=data_q2, o2=data_q1, clk=ClockSignal(),
-                                                clk_edge="SAME_EDGE_PIPELINED")
+        self.submodules += XilinxDDRInputImplS7(i=data_delayed, o1=data_q2, o2=data_q1, clk=ClockSignal(),
+                                                clk_edge="OPPOSITE_EDGE")
         self.comb += data_q1q2.eq(Cat(data_q1, data_q2))
 
-        shift_register = Signal(max_frame_length)
-        shift_register_reg = Signal.like(shift_register)
+        shift_register = Signal(max_frame_length+2)
+        shift_register_reg = Signal(max_frame_length)
+        shift_register_view = Signal(max_frame_length)
         stb_reg = Signal()
         bit_counter = Signal(max=max_frame_length)
         self.submodules.fsm = fsm = FSM(reset_state="IDLE")
         fsm.act("IDLE",
-                NextValue(bit_counter, csr.frame_length),
+                NextValue(bit_counter, csr.frame_length-2),
                 NextValue(stb_reg, 0),
                 If(frame_start,
                    NextState("FRAMEACQ")
@@ -118,7 +119,7 @@ class TdcGpx2ChannelPhy(Module):
                 NextValue(bit_counter, bit_counter-2),
                 NextValue(stb_reg, 0),
                 If(bit_counter == 0,
-                   NextValue(shift_register_reg, shift_register),
+                   NextValue(shift_register_reg, shift_register[1:-1]),
                    NextValue(stb_reg, 1),
                    If(frame_start,
                       NextValue(bit_counter, csr.frame_length)
@@ -133,7 +134,8 @@ class TdcGpx2ChannelPhy(Module):
 
         self.comb += [
             self.data_o.eq(shift_register_reg),
-            self.stb_o.eq(stb_reg)
+            self.stb_o.eq(stb_reg),
+            shift_register_view.eq(shift_register[1:-1])
         ]
 
 
@@ -178,6 +180,10 @@ class SimulationWrapper(Module):
                 ch.interface.o.address,
                 ch.interface.i.stb,
                 ch.interface.i.data,
+
+                dut.data_clk_o,
+                *[s for s in dut.data_stb_o],
+                *[s for s in dut.data_o]
             ]
 
 

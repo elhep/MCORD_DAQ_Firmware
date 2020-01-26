@@ -76,5 +76,5 @@ class RtLinkCSR:
             name = r[1].strip()
             addr = int(r[0])
             length = int(r[2])
-            print("RtLinkCSR {:03x} {}({})".format(addr, name, length))
+            # print("RtLinkCSR {:03x} {}({})".format(addr, name, length))
             setattr(self, name, RtLinkCSR.Reg(rtlink, addr, length))
