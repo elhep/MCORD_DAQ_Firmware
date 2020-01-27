@@ -6,10 +6,12 @@ from migen.genlib.resetsync import AsyncResetSynchronizer
 from gateware.cores.xilinx import XilinxIdelayE2
 from gateware.cores.rtlink_csr import RtLinkCSR
 
+from artiq.gateware import rtio
+
 
 class ADS5296A_XS7(Module):
 
-    def __init__(self, platform, adclk_i, lclk_i, dat_i):
+    def __init__(self, adclk_i, lclk_i, dat_i):
 
         # Module constants
         # ==========================================
@@ -35,6 +37,7 @@ class ADS5296A_XS7(Module):
 
         csr = RtLinkCSR(regs, "ads5296a_phy")
         self.submodules.csr = csr
+        self.rtio_channels = [rtio.Channel.from_phy(self.csr)]
 
         # Design
         # ==========================================
@@ -59,7 +62,6 @@ class ADS5296A_XS7(Module):
 
         self.clock_domains.cd_adclk_clkdiv = cd_div4 = ClockDomain()
         self.specials += [AsyncResetSynchronizer(cd_div4, ResetSignal("sys"))]
-        platform.add_period_constraint(cd_div4.clk, 10.)
 
         self.specials += DifferentialInput(i_p=lclk_i.p,
                                            i_n=lclk_i.n,
@@ -158,21 +160,36 @@ class SimulationWrapper(Module):
             self.io += add_diff_signal("dat_{}_i".format(i))
             dat_i.append(getattr(self, "dat_{}_i".format(i)))
 
-        self.clock_domains.sys = cd_sys = ClockDomain()
-        self.io.append(cd_sys.clk)
-        self.io.append(cd_sys.rst)
+        self.clock_domains.cd_rio_phy = cd_rio_phy = ClockDomain()
+        self.clock_domains.cd_sys = cd_sys = ClockDomain()
+
+        self.io = [
+            cd_rio_phy.clk,
+            cd_rio_phy.rst,
+            cd_sys.rst
+        ]
 
         self.submodules.dut = dut = ADS5296A_XS7(self.adclk_i, self.lclk_i, dat_i)
 
-        for i in range(9):
-            self.io.append(dut.idelay_val_i[i])
-        self.io.append(dut.idelay_ld_i)
         self.io.append(dut.data_clk_o)
         for i in range(8):
             self.io.append(dut.data_o[i])
-        self.io.append(dut.rst_i)
-        self.io.append(dut.ref_clk_200M)
         self.io.append(dut.bitslip_done)
+
+        dut.rtio_channels[0].interface.o.stb.name_override = "rtlink_stb_i"
+        dut.rtio_channels[0].interface.o.data.name_override = "rtlink_data_i"
+        dut.rtio_channels[0].interface.o.address.name_override = "rtlink_address_i"
+
+        dut.rtio_channels[0].interface.i.stb.name_override = "rtlink_stb_o"
+        dut.rtio_channels[0].interface.i.data.name_override = "rtlink_data_o"
+
+        self.io += [
+            dut.rtio_channels[0].interface.o.stb,
+            dut.rtio_channels[0].interface.o.data,
+            dut.rtio_channels[0].interface.o.address,
+            dut.rtio_channels[0].interface.i.stb,
+            dut.rtio_channels[0].interface.i.data
+        ]
 
         self.io = {*self.io}
 

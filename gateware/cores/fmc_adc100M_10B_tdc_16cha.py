@@ -212,14 +212,13 @@ class FmcAdc100M10b16chaTdc(_FMC):
             # There is single PHY per ADS5296A chip, but each channel has its own DAQ module
             dclk_name = "fmc{}_adc{}_dclk".format(fmc, adc_id)
             phy = ADS5296A_XS7(
-                platform=target.platform,
                 adclk_i=target.platform.request(cls.signal_name("adc_out_adclk", fmc), adc_id),
                 lclk_i=target.platform.request(cls.signal_name("adc_out_lclk", fmc), adc_id),
                 dat_i=[target.platform.request(cls.signal_name("adc_out_out{}".format(i), fmc), adc_id) for i in range(8)])
             phy_renamed_cd = ClockDomainsRenamer({"adclk_clkdiv": dclk_name})(phy)
             setattr(target.submodules, "fmc{}_adc{}_phy".format(fmc, adc_id), phy_renamed_cd)
             target.add_rtio_channels(
-                rtio.Channel.from_phy(phy.csr),
+                phy.rtio_channels[0],
                 "fmc{}_adc{} (ADS5296APhy)".format(fmc, adc_id)
             )
 
@@ -274,4 +273,4 @@ class FmcAdc100M10b16chaTdc(_FMC):
             target.submodules += phy
             target.add_rtio_channels(rtio.Channel.from_phy(phy, ififo_depth=64), "fmc{}_trig (InOut_8X)".format(fmc))
 
-        # TODO: Add timing constraints
+        # TODO: Add timing constraints for TDC and ADC
