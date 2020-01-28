@@ -11,7 +11,7 @@ class AfckTdc(StandaloneBase):
 
     def add_design(self):
         FmcAdc100M10b16chaTdc.add_std(self, 1, iostd_single, iostd_diff, with_trig=True)
-        FmcAdc100M10b16chaTdc.add_std(self, 2, iostd_single, iostd_diff, with_trig=False)
+        #FmcAdc100M10b16chaTdc.add_std(self, 2, iostd_single, iostd_diff, with_trig=False)
 
 
 def main():

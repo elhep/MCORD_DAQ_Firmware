@@ -215,6 +215,7 @@ class FmcAdc100M10b16chaTdc(_FMC):
                 adclk_i=target.platform.request(cls.signal_name("adc_out_adclk", fmc), adc_id),
                 lclk_i=target.platform.request(cls.signal_name("adc_out_lclk", fmc), adc_id),
                 dat_i=[target.platform.request(cls.signal_name("adc_out_out{}".format(i), fmc), adc_id) for i in range(8)])
+            target.platform.add_period_constraint(phy.cd_adclk_clkdiv.clk, 10.)
             phy_renamed_cd = ClockDomainsRenamer({"adclk_clkdiv": dclk_name})(phy)
             setattr(target.submodules, "fmc{}_adc{}_phy".format(fmc, adc_id), phy_renamed_cd)
             target.add_rtio_channels(
@@ -241,6 +242,7 @@ class FmcAdc100M10b16chaTdc(_FMC):
             phy = TdcGpx2Phy(data_clk_i=target.platform.request(cls.signal_name("tdc_out_lclkout", fmc), tdc_id),
                              frame_signals_i=fs,
                              data_signals_i=ds)
+            target.platform.add_period_constraint(phy.cd_dclk.clk, 4.)
             phy_renamed_cd = ClockDomainsRenamer({"dclk": dclk_name})(phy)
             setattr(target.submodules, "fmc{}_tdc{}_phy".format(fmc, tdc_id), phy_renamed_cd)
             target.add_rtio_channels(
@@ -273,4 +275,3 @@ class FmcAdc100M10b16chaTdc(_FMC):
             target.submodules += phy
             target.add_rtio_channels(rtio.Channel.from_phy(phy, ififo_depth=64), "fmc{}_trig (InOut_8X)".format(fmc))
 
-        # TODO: Add timing constraints for TDC and ADC
