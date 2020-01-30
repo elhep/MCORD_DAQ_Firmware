@@ -107,7 +107,7 @@ class AD9528:
         cs = self.chip_select
         if self.chip_select == 0:
             self.csn_device.off()
-            delay(40 * ns)
+            delay(50 * ns)
             cs = 1
 
         self.spi.set_config_mu(flags=SPI_CONFIG, length=16, div=self.div, cs=cs)
@@ -115,6 +115,7 @@ class AD9528:
 
         self.spi.set_config_mu(flags=SPI_CONFIG | spi.SPI_INPUT | spi.SPI_END, length=8, div=self.div, cs=cs)
         self.spi.write(0)
+        delay(50 * ns)
 
         if self.chip_select == 0:
             self.csn_device.on()
@@ -133,7 +134,7 @@ class AD9528:
             if r[0] >= 0x505:
                 continue
             print("\t{:04x}: E {:02x} R {:02x} S {}".format(r[0], r[1], ro, "OK" if r[1] == ro else "Fail"))
-            assert r[1] == ro, "Invalid readout at address {:04x}, expected: {:02x}, got {:02x}".format(r[0], r, ro)
+            assert r[1] == ro, "Invalid readout at address {:04x}, expected: {:02x}, got {:02x}".format(r[0], r[1], ro)
         print("Verification successful")
 
     def get_status(self):

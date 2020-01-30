@@ -1,11 +1,13 @@
 from artiq.coredevice import spi2 as spi
-from artiq.coredevice.rtio import rtio_output, rtio_input_timestamped_data
-from artiq.language import TInt32
+from artiq.coredevice.rtio import rtio_output, rtio_input_timestamped_data, rtio_input_data
+from artiq.language import TInt32, TInt64
 from artiq.language.core import kernel, delay_mu
 from artiq.language.core import rpc
 from artiq.language.units import us, ns
 from coredevice.rtlink_csr import RtlinkCsr
 from artiq.coredevice.ttl import TTLOut
+from artiq.coredevice.exceptions import RTIOOverflow
+from numpy import int64, int32
 
 
 SPI_CONFIG = (0*spi.SPI_OFFLINE | 0*spi.SPI_END |
@@ -47,12 +49,28 @@ class AdcDaq:
     def get_samples(self):
         self.incomplete = False
         for _ in range(self.pretrigger+self.posttrigger):
-            ts, data = rtio_input_timestamped_data(self.core.seconds_to_mu(1*us), self.channel)
-            if ts < 0:
-                self.incomplete = True
-                break
-            else:
+            try:
+                # r = rtio_input_timestamped_data(self.core.seconds_to_mu(1*us), self.channel)
+                # ts = r[0]
+                # data = r[1]
+                data = rtio_input_data(self.channel)
+                # print(_, ts, data)
                 self.store_sample(data)
+                # if ts < 0:
+                #     self.incomplete = True
+                #     break
+                # else:
+                #     self.store_sample(data)
+            except RTIOOverflow:
+                print("Overflow")
+                self.incomplete = True
+
+
+    @kernel
+    def clear_fifo(self):
+        ts = 0
+        while ts >= 0:
+            ts, data = rtio_input_timestamped_data(int64(100), int32(self.channel))
 
 
 class ADS5296A:

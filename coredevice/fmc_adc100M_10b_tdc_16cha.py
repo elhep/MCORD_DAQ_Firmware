@@ -48,7 +48,7 @@ class FmcAdc100M10bTdc16cha:
         self.clock = AD9528(dmgr=dmgr,
                             spi_device=self.tdc_spi,
                             chip_select=self.clock_csn,
-                            spi_freq=10_000_000,
+                            spi_freq=500_000,
                             config=AD9528_DEFAULT_CONFIG,
                             core_device=core_device)
 
