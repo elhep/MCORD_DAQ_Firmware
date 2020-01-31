@@ -9,19 +9,30 @@ class RtlinkCsr:
 
     class Reg:
 
-        def __init__(self, channel, address, length):
+        def __init__(self, channel, address, length, core):
             self.channel = channel
             self.address = address
             self.length = length
+            self.core = core
 
         @kernel
-        def write(self, data):
+        def write_rt(self, data):
             rtio_output((self.channel << 8) | self.address << 1 | 1, data & ((0x1 << self.length)-1))
 
         @kernel
-        def read(self) -> TInt32:
+        def write(self, data):
+            self.core.break_realtime()
+            self.write_rt(data)
+
+        @kernel
+        def read_rt(self) -> TInt32:
             rtio_output((self.channel << 8) | self.address << 1 | 0, 0)
             return rtio_input_data(self.channel)
+
+        @kernel
+        def read(self) -> TInt32:
+            self.core.break_realtime()
+            return self.read_rt()
 
     def __init__(self, dmgr, channel, config=None, config_file=None, core_device="core"):
         self.channel = channel
@@ -31,14 +42,14 @@ class RtlinkCsr:
 
         if config:
             for reg in config:
-                new_reg = RtlinkCsr.Reg(self.channel, reg[0], reg[2])
+                new_reg = RtlinkCsr.Reg(self.channel, reg[0], reg[2], self.core)
                 setattr(self, reg[1], new_reg)
         elif config_file:
             with open(config_file, 'r') as f:
                 reg_reader = csv.reader(f, delimiter=',')
                 next(reg_reader)  # ignore header
                 for reg in reg_reader:
-                    new_reg = RtlinkCsr.Reg(self.channel, reg[0], reg[2])
+                    new_reg = RtlinkCsr.Reg(self.channel, reg[0], reg[2], self.core)
                     setattr(self, reg[1], new_reg)
         else:
             raise ValueError("Invalid RTLink CSR configuration")

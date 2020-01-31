@@ -223,7 +223,7 @@ class FmcAdc100M10b16chaTdc(_FMC):
                 "fmc{}_adc{} (ADS5296APhy)".format(fmc, adc_id)
             )
 
-            for channel in range(8):
+            for channel in range(9):
                 daq = ClockDomainsRenamer({"dclk": dclk_name})(AdcPhyDaq(
                     data_clk=phy.data_clk_o,
                     data=phy.data_o[channel],

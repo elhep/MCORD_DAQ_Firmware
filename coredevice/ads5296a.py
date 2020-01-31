@@ -109,7 +109,7 @@ class ADS5296A:
         ]
 
         self.phy = RtlinkCsr(dmgr, channel, config=phy_config, core_device=core_device)
-        self.daq = [AdcDaq(dmgr, channel+1+i, core_device) for i in range(8)]
+        self.daq = [AdcDaq(dmgr, channel+1+i, core_device) for i in range(9)]
 
     @kernel
     def write(self, addr, data):

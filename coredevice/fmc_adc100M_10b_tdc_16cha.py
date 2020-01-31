@@ -31,19 +31,19 @@ class FmcAdc100M10bTdc16cha:
         self.adc_spi = spi.SPIMaster(dmgr, self.channel + 12, core_device=core_device)
         self.tdc_spi = spi.SPIMaster(dmgr, self.channel + 11, core_device=core_device)
 
-        self.tdc_csn = [TTLOut(dmgr, self.channel + 79 + i, core_device) for i in range(4)]
-        self.clock_csn = TTLOut(dmgr, self.channel + 79 + 4, core_device)
-        self.adc_csn = [TTLOut(dmgr, self.channel + 79 + 5 + i, core_device) for i in range(2)]
+        self.tdc_csn = [TTLOut(dmgr, self.channel + 81 + i, core_device) for i in range(4)]
+        self.clock_csn = TTLOut(dmgr, self.channel + 81 + 4, core_device)
+        self.adc_csn = [TTLOut(dmgr, self.channel + 81 + 5 + i, core_device) for i in range(2)]
 
         self.adc = [
             ADS5296A(dmgr, self.channel + 13 + i*9, self.adc_spi, self.adc_csn[i], core_device=core_device, spi_freq=500_000) for i in range(2)
         ]
         self.tdc = [
-            TDCGPX2(dmgr, self.channel + 31 + i*12, self.tdc_spi, self.tdc_csn[i], core_device=core_device, spi_freq=500_000) for i in range(4)
+            TDCGPX2(dmgr, self.channel + 31 + i*12, self.tdc_spi, self.tdc_csn[i], core_device=core_device, spi_freq=1_000_000) for i in range(4)
         ]
 
         if with_trig:
-            self.trig = TTLInOut(dmgr, channel + 86, core_device)
+            self.trig = TTLInOut(dmgr, channel + 88, core_device)
 
         self.clock = AD9528(dmgr=dmgr,
                             spi_device=self.tdc_spi,
@@ -72,3 +72,5 @@ class FmcAdc100M10bTdc16cha:
         self.deactivate_all_spi_devices()
         self.reset_ad9528_and_adc()
         self.clock.initialize()
+        for tdc in self.tdc:
+            tdc.initialize()

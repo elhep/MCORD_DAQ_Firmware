@@ -1,6 +1,7 @@
 from migen import *
 from migen.build.generic_platform import *
 from migen.genlib.io import DifferentialInput
+from migen.genlib.cdc import PulseSynchronizer
 from migen.genlib.resetsync import AsyncResetSynchronizer
 
 from gateware.cores.xilinx import XilinxIdelayE2
@@ -32,7 +33,8 @@ class ADS5296A_XS7(Module):
 
         regs = [
             *[("data{}_delay_value".format(x), 5) for x in range(8)],
-            ("adclk_delay_value", 5)
+            ("adclk_delay_value", 5),
+            # ("bitslip_status", 1),
         ]
 
         csr = RtLinkCSR(regs, "ads5296a_phy")
@@ -88,6 +90,17 @@ class ADS5296A_XS7(Module):
                If(~self.bitslip_done,
                   bitslip.eq(1))),
         ]
+
+        # # Synchronization of bitslip_done to RtLinkCSR
+        # self.submodules.bitslip_sync = bitslip_sync = PulseSynchronizer("adclk_clkdiv", "rio_phy")
+        # bitslip_reg_rio_phy = Signal()
+        # csr.bitslip_status = bitslip_reg_rio_phy
+        # self.sync.rio_phy += [
+        #     bitslip_reg_rio_phy.eq(bitslip_sync.o)
+        # ]
+        # self.comb += [
+        #     bitslip_sync.i.eq(self.bitslip_done)
+        # ]
 
         # ISERDES
         # For 10b deserialization we'll be using two ISERDES modules connected in MASTER-SLAVE mode.

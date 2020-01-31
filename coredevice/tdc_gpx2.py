@@ -3,9 +3,10 @@ from artiq.coredevice.rtio import rtio_output, rtio_input_timestamped_data
 from artiq.language.core import kernel, rpc
 from artiq.language.core import portable
 from artiq.language.types import TInt32
-from artiq.language.units import ns, us
+from artiq.language.units import ns, us, ms
 from coredevice.rtlink_csr import RtlinkCsr
 from artiq.coredevice.ttl import TTLOut
+import re
 
 
 SPI_CONFIG = (0*spi.SPI_OFFLINE | 0*spi.SPI_END |
@@ -128,12 +129,25 @@ class TDCGPX2:
         self.phy = [RtlinkCsr(dmgr, channel+i, config=phy_config, core_device=core_device) for i in range(4)]
         self.daq = [TDCGPX2ChannelDAQ(dmgr, channel+4+2*i, data_width, core_device) for i in range(4)]
 
-        self.readout = [0] * 17
+        self.readout = [0] * 24
 
-        self.default_config = [
+        # Copy from evaluation board saved configuration
+        self.default_config = """
+            equal 0xA03F013F   ; Register 3, 2, 1, 0
+            equal 0x53D00186   ; Register 7, 6, 5, 4
+            equal 0x0A0013A1   ; Register 11, 10, 9, 8
+            equal 0x7DF1CCCC   ; Register 15, 14, 13, 12
+            equal 0x00000000   ; Register 19, 18, 17, 16
+            equal 0x00000000   ; Register 23, 22, 21, 20
+        """
+        self.regs = []
+        self.parse_default_config()
 
-        ]
-
+    def parse_default_config(self):
+        self.regs = re.findall(r'equal\s+0x(\w{8})', self.default_config)
+        self.regs = [re.findall(r'..', x)[::-1] for x in self.regs]
+        self.regs = sum(self.regs, [])
+        self.regs = [int(x, 16) for x in self.regs]
 
     @kernel
     def _write_op(self, op, end=False):
@@ -158,7 +172,7 @@ class TDCGPX2:
 
     @kernel
     def _write_data(self, data):
-        self.spi.set_config_mu(SPI_CONFIG | spi.SPI_END, 8, self.div, self.chip_select)
+        self.spi.set_config_mu(SPI_CONFIG | spi.SPI_END, 8, self.div, 1)  # fixme: chip select
         self.spi.write((data & 0xFF) << 24)
 
     @kernel
@@ -181,9 +195,14 @@ class TDCGPX2:
         return self.spi.read()
 
     @kernel
-    def write_config_register(self, addr, data):
-        self._write_op(0x80 | (addr & 0x1F), end=False)
-        self._write_data(data & 0xFF)
+    def write_config_registers_rt(self):
+        self._write_op(0x80 | 0, end=False)
+
+        delay(51*us)
+
+        for r in self.regs[:18]:
+            self._write_data(r & 0xFF)
+            delay(20800 * ns)
 
         if self.chip_select == 0:
             delay(300 * ns)
@@ -199,10 +218,25 @@ class TDCGPX2:
     def initialization_reset(self):
         self._write_op(0x18, end=True)
 
-    @kernel
     def initialize(self):
-        self.core.break_realtime()
-        self.power_on_reset()
+
+        print("Initializing TDC GPX-2...")
+
+        @kernel
+        def do_initialize(self):
+            self.core.break_realtime()
+            self.power_on_reset()
+            delay(4*ms)
+            self.write_config_registers_rt()
+            self.read_configuration()
+
+        do_initialize(self)
+
+        for a, (re, ro) in enumerate(zip(self.readout, self.regs[:17])):
+            print("\t{:02x}: E {:02x} R {:02x} S {}".format(a, re, ro, "OK" if re == ro else "Fail"))
+            assert re == ro, "Invalid readout at address {:04x}, expected: {:02x}, got {:02x}".format(a, re, ro)
+
+        print("TDC GPX-2 initialized.")
 
     @kernel
     def start_measurement(self):
@@ -213,9 +247,9 @@ class TDCGPX2:
     def read_configuration(self):
         self.core.break_realtime()
 
-        self._write_op(0x30, end=True)
+        self._write_op(0x40, end=True)
 
-        for i in range(17):
+        for i in range(24):
             self.readout[i] = self.read_rt(i)
         return self.readout
 
