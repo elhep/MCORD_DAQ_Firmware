@@ -274,4 +274,3 @@ class FmcAdc100M10b16chaTdc(_FMC):
             phy = ttl_serdes_7series.InOut_8X(pads.p, pads.n)
             target.submodules += phy
             target.add_rtio_channels(rtio.Channel.from_phy(phy, ififo_depth=64), "fmc{}_trig (InOut_8X)".format(fmc))
-

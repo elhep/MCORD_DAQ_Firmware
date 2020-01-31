@@ -26,11 +26,11 @@ class TestComm(EnvExperiment):
     def test_daq(self):
         self.core.break_realtime()
         # self.fmc1.adc[0].daq[0].clear_fifo()
-        self.fmc1.adc[0].daq[8].configure(20, 20)
+        self.fmc1.adc[0].daq[0].configure(20, 20)
         delay(100 * us)
-        self.fmc1.adc[0].daq[8].trigger()
+        self.fmc1.adc[0].daq[0].trigger()
         delay(100 * us)
-        self.fmc1.adc[0].daq[8].get_samples()
+        self.fmc1.adc[0].daq[0].get_samples()
 
     @kernel
     def clear_adc_rtio(self):
@@ -43,28 +43,29 @@ class TestComm(EnvExperiment):
 
     def run(self):
         self.fmc1.initialize()
+        self.test_adc_comm()
         #
-        # self.fmc1.adc[0].write(0x46, 0x8108)
-        # self.fmc1.adc[0].write(0x45, 0x0)
-        # self.fmc1.adc[0].write(0x25, 0x40)
+        self.fmc1.adc[0].write(0x46, 0x8108)
+        self.fmc1.adc[0].write(0x45, 0x0)
+        self.fmc1.adc[0].write(0x25, 0x40)
 
         # self.debug_daq()
         # self.clear_adc_rtio()
 
-        # for i in range(32):
-        #     while True:
-        #         self.fmc1.adc[0].phy.adclk_delay_value.write(i)
-        #         self.test_daq()
-        #         print("Samples:")
-        #         for s in self.fmc1.adc[0].daq[8].samples:
-        #             print(bin(s))
-        #         a = input("{}, next value (n), repeat (r)".format(i))
-        #         if a == 'n':
-        #             break
-        #         elif a == 'r':
-        #             continue
-        #         else:
-        #             continue
+        for i in range(32):
+            while True:
+                self.fmc1.adc[0].phy.adclk_delay_value.write(i)
+                self.test_daq()
+                print("Samples:")
+                for s in self.fmc1.adc[0].daq[0].samples:
+                    print("{}".format(s))
+                a = input("{}, next value (n), repeat (r)".format(i))
+                if a == 'n':
+                    break
+                elif a == 'r':
+                    continue
+                else:
+                    continue
 
         # self.fmc1.adc[0].daq[8].get_samples()
 

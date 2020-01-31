@@ -16,3 +16,6 @@
 [submodule "modules/nix-scripts"]
 	path = modules/nix-scripts
 	url = https://git.m-labs.hk/M-Labs/nix-scripts.git
+[submodule "modules/microscope"]
+	path = modules/microscope
+	url = https://github.com/m-labs/microscope.git

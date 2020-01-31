@@ -34,7 +34,6 @@ class ADS5296A_XS7(Module):
         regs = [
             *[("data{}_delay_value".format(x), 5) for x in range(8)],
             ("adclk_delay_value", 5),
-            # ("bitslip_status", 1),
         ]
 
         csr = RtLinkCSR(regs, "ads5296a_phy")
@@ -60,6 +59,7 @@ class ADS5296A_XS7(Module):
 
         # Clocking
         lclk_ibuf = Signal()
+        lclk_bufg = Signal()
         lclk_bufio = Signal()
 
         self.clock_domains.cd_adclk_clkdiv = cd_div4 = ClockDomain()
@@ -76,6 +76,9 @@ class ADS5296A_XS7(Module):
                                   i_I=lclk_ibuf,
                                   i_CE=1,
                                   i_CLR=0,
+                                  o_O=lclk_bufg)
+        self.specials += Instance("BUFG",
+                                  i_I=lclk_bufg,
                                   o_O=cd_div4.clk)
 
         # Bitslip logic
@@ -90,17 +93,6 @@ class ADS5296A_XS7(Module):
                If(~self.bitslip_done,
                   bitslip.eq(1))),
         ]
-
-        # # Synchronization of bitslip_done to RtLinkCSR
-        # self.submodules.bitslip_sync = bitslip_sync = PulseSynchronizer("adclk_clkdiv", "rio_phy")
-        # bitslip_reg_rio_phy = Signal()
-        # csr.bitslip_status = bitslip_reg_rio_phy
-        # self.sync.rio_phy += [
-        #     bitslip_reg_rio_phy.eq(bitslip_sync.o)
-        # ]
-        # self.comb += [
-        #     bitslip_sync.i.eq(self.bitslip_done)
-        # ]
 
         # ISERDES
         # For 10b deserialization we'll be using two ISERDES modules connected in MASTER-SLAVE mode.
@@ -152,6 +144,15 @@ class ADS5296A_XS7(Module):
                                       i_BITSLIP=bitslip,
                                       i_DYNCLKDIVSEL=0,
                                       i_DYNCLKSEL=0)
+
+        # Debugging definition
+        self.bitslip_done.attr.add(("mark_debug", "true"))
+        bitslip_cnt.attr.add(("mark_debug", "true"))
+        bitslip.attr.add(("mark_debug", "true"))
+        self.data_o[0].attr.add(("mark_debug", "true"))
+        csr.data0_delay_value.attr.add(("mark_debug", "true"))
+        self.data_o[8].attr.add(("mark_debug", "true"))
+        csr.adclk_delay_value.attr.add(("mark_debug", "true"))
 
 
 class SimulationWrapper(Module):

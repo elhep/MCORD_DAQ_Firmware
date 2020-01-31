@@ -13,6 +13,10 @@ class AfckTdc(StandaloneBase):
         FmcAdc100M10b16chaTdc.add_std(self, 1, iostd_single, iostd_diff, with_trig=True)
         #FmcAdc100M10b16chaTdc.add_std(self, 2, iostd_single, iostd_diff, with_trig=False)
 
+        self.platform.toolchain.postsynthesis_commands.append("source /home/ms/data/pw/tdc/repo2/gateware/debug/insert_ila.tcl")
+        self.platform.toolchain.postsynthesis_commands.append(
+            "batch_insert_ila {1024}")
+
 
 def main():
     parser = argparse.ArgumentParser(
