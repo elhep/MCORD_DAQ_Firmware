@@ -1,5 +1,6 @@
 import argparse
 
+from migen import *
 from artiq.build_soc import build_artiq_soc
 from artiq.gateware.targets.afck1v1 import StandaloneBase, iostd_single, iostd_diff
 from gateware.cores.fmc_adc100M_10B_tdc_16cha import FmcAdc100M10b16chaTdc
@@ -16,6 +17,10 @@ class AfckTdc(StandaloneBase):
         self.platform.toolchain.postsynthesis_commands.append("source /home/ms/data/pw/tdc/repo2/gateware/debug/insert_ila.tcl")
         self.platform.toolchain.postsynthesis_commands.append(
             "batch_insert_ila {1024}")
+        self.crg.cd_sys.clk.attr.add(("mark_dbg_hub_clk", "true"))
+        self.crg.cd_sys.clk.attr.add(("keep", "true"))
+        self.platform.toolchain.postsynthesis_commands.append(
+            "connect_debug_port dbg_hub/clk [get_nets -hierarchical -filter {mark_dbg_hub_clk == true}]")
 
 
 def main():
