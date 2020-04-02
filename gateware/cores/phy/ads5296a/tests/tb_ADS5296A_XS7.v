@@ -138,8 +138,8 @@ module tb_ADS5296A_XS7 ();
     task automatic transfer_frame (input integer i);
     begin
         fork
-            generate_frame(adclk_i_p, adclk_i_n);
-            generate_data(i, dat_0_i_p, dat_0_i_n);
+            #100 generate_frame(adclk_i_p, adclk_i_n);
+            #20 generate_data(i, dat_0_i_p, dat_0_i_n);
             generate_data(i+1, dat_1_i_p, dat_1_i_n);
             generate_data(i+3, dat_2_i_p, dat_2_i_n);
             generate_data(i+5, dat_3_i_p, dat_3_i_n);
@@ -164,7 +164,8 @@ module tb_ADS5296A_XS7 ();
     end;
     endtask
     
-    initial begin
+    task automatic initialize ( );
+    begin
         // Initialize inputs with some reasonable values
         dat_0_i_p = 0;
         dat_0_i_n = 1;
@@ -201,6 +202,15 @@ module tb_ADS5296A_XS7 ();
         // Disable reset signals
         sys_rst = 1'd0;
         rst_i = 1'd0;
+    end;
+    endtask
+        
+    initial begin
+    
+        initialize();
+        
+        
+        
         
         // Wait at least 2 CLKDIV (aka SAMPLE_CLOCK)
         #(4.0*SAMPLE_PERIOD); 

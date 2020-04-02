@@ -177,7 +177,7 @@ class SimulationWrapper(Module):
         self.clock_domains.cd_rio_phy = cd_rio_phy = ClockDomain()
         self.clock_domains.cd_sys = cd_sys = ClockDomain()
 
-        self.io = [
+        self.io += [
             cd_rio_phy.clk,
             cd_rio_phy.rst,
             cd_sys.rst
