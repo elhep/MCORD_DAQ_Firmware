@@ -1,0 +1,1 @@
+python ./gateware/afck_tdc.py --integrated-rom-size 131072

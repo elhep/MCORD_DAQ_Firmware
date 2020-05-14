@@ -25,7 +25,7 @@ class TestComm(EnvExperiment):
     @kernel
     def test_daq(self):
         self.core.break_realtime()
-        # self.fmc1.adc[0].daq[0].clear_fifo()
+        self.fmc1.adc[0].daq[0].clear_fifo()
         self.fmc1.adc[0].daq[0].configure(20, 20)
         delay(100 * us)
         self.fmc1.adc[0].daq[0].trigger()

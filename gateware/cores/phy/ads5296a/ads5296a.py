@@ -32,7 +32,7 @@ class ADS5296A_XS7(Module):
         # ==========================================
 
         regs = [
-            *[("data{}_delay_value".format(x), 5) for x in range(8)],
+            *[("data{}_delay_value".format(x), 5) for x in range(9)],
             ("adclk_delay_value", 5),
         ]
 
@@ -50,6 +50,7 @@ class ADS5296A_XS7(Module):
             self.specials += DifferentialInput(i_p=input_line.p,
                                                i_n=input_line.n,
                                                o=line_buffer)
+            print(idx)
             self.submodules += XilinxIdelayE2(
                 data_i=line_buffer,
                 data_o=line_delayed,
