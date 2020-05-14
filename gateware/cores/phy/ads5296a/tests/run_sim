@@ -8,7 +8,7 @@ then
     exit -1
 fi
 
-mkdir build
+mkdir -p build
 cd build
 
 xvlog --sv ../ADS5296A_XS7.v ../tb_ADS5296A_XS7.v $XILINX_VIVADO/data/verilog/src/glbl.v
