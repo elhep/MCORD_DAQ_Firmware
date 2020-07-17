@@ -71,8 +71,8 @@ class AD9528:
         self.core.break_realtime()
         for r in self.regs:
             self.write_rt(r[0], r[1])
-            self.write_rt(0xF, 1)
-            delay(10 * us)
+        self.write_rt(0xF, 1)
+        delay(10 * us)
 
     @kernel
     def read_config_regs(self):

@@ -15,49 +15,52 @@ class TestComm(EnvExperiment):
     @kernel
     def test_adc_comm(self):
         self.core.break_realtime()
-        self.fmc1.adc[0].write_rt(0xA, 0xF00F)
-        self.fmc1.adc[0].enable_read_rt()
-        r = self.fmc1.adc[0].read_rt(0xA)
+        self.fmc1.adc[1].write_rt(0xA, 0xF00F)
+        self.fmc1.adc[1].enable_read_rt()
+        r = self.fmc1.adc[1].read_rt(0xA)
         delay(100 * us)
-        self.fmc1.adc[0].disable_read_rt()
-        return r
+        self.fmc1.adc[1].disable_read_rt()
+        assert r == 0xF00F
 
     @kernel
     def test_daq(self):
         self.core.break_realtime()
-        self.fmc1.adc[0].daq[0].clear_fifo()
-        self.fmc1.adc[0].daq[0].configure(20, 20)
+        self.fmc1.adc[1].daq[0].clear_fifo()
+        self.fmc1.adc[1].daq[0].configure(20, 20)
         delay(100 * us)
-        self.fmc1.adc[0].daq[0].trigger()
+        self.fmc1.adc[1].daq[0].trigger()
         delay(100 * us)
-        self.fmc1.adc[0].daq[0].get_samples()
+        self.fmc1.adc[1].daq[0].get_samples()
 
     @kernel
     def clear_adc_rtio(self):
-        self.fmc1.adc[0].daq[0].clear_fifo()
+        self.fmc1.adc[1].daq[0].clear_fifo()
 
     @kernel
     def debug_daq(self):
         self.core.break_realtime()
-        self.fmc1.adc[0].daq[8].configure(20, 20)
+        self.fmc1.adc[1].daq[8].configure(20, 20)
 
     def run(self):
         self.fmc1.initialize()
         self.test_adc_comm()
         #
-        self.fmc1.adc[0].write(0x46, 0x8108)
-        self.fmc1.adc[0].write(0x45, 0x0)
-        self.fmc1.adc[0].write(0x25, 0x40)
+        # self.fmc1.adc[0].write(0x46, 0x8208)
+        # self.fmc1.adc[0].write(0x45, 0x0)
+        # self.fmc1.adc[0].write(0x25, 0x40)
 
-        # self.debug_daq()
-        # self.clear_adc_rtio()
+        print("Debug")
+        self.debug_daq()
+        print("Clear FIFO")
+        self.clear_adc_rtio()
 
+        print("Debug")
         for i in range(32):
             while True:
-                self.fmc1.adc[0].phy.adclk_delay_value.write(i)
+                self.fmc1.adc[1].phy.adclk_delay_value.write(i)
                 self.test_daq()
                 print("Samples:")
-                for s in self.fmc1.adc[0].daq[0].samples:
+                for s in self.fmc1.adc[1].daq[0].samples:
                     print("{}".format(s))
                 a = input("{}, next value (n), repeat (r)".format(i))
                 if a == 'n':

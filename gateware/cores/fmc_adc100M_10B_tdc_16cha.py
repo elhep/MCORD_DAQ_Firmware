@@ -34,12 +34,12 @@ class FmcAdc100M10b16chaTdc(_FMC):
         return (cls.signal_name(signal_name, fmc), idx,
                 Subsignal("p", Pins(_fmc_pin(fmc, bank, i, "p"))),
                 Subsignal("n", Pins(_fmc_pin(fmc, bank, i, "n"))),
-                IOStandard(iostd_diff["fmc{}_{}".format(fmc, bank)]))
+                *(iostd_diff[f"fmc{fmc}_{bank}"]))
 
     @classmethod
     def single_signal(cls, signal_name, fmc, bank, i, pol, iostd_single, idx=0):
         return (cls.signal_name(signal_name, fmc), idx, Pins(_fmc_pin(fmc, bank, i, pol)),
-                IOStandard(iostd_single["fmc{}_{}".format(fmc, bank)]))
+                *(iostd_single[f"fmc{fmc}_{bank}"]))
 
     @classmethod
     def io(cls, fmc, iostd_single, iostd_diff):
@@ -115,9 +115,9 @@ class FmcAdc100M10b16chaTdc(_FMC):
             cls.diff_signal("tdc_dis", fmc, "LA", 10, iostd_diff, idx=3),
 
             (cls.signal_name("adc_spi", fmc), 0,
-             Subsignal("sck", Pins(_fmc_pin(fmc, "HA", 22, "p")), IOStandard(iostd_single["fmc{}_HA".format(fmc)])),
-             Subsignal("miso", Pins(_fmc_pin(fmc, "HA", 21, "n")), IOStandard(iostd_single["fmc{}_HA".format(fmc)])),
-             Subsignal("mosi", Pins(_fmc_pin(fmc, "LA", 16, "p")), IOStandard(iostd_single["fmc{}_LA".format(fmc)])),
+             Subsignal("sck", Pins(_fmc_pin(fmc, "HA", 22, "p")), *(iostd_single["fmc{}_HA".format(fmc)])),
+             Subsignal("miso", Pins(_fmc_pin(fmc, "HA", 21, "n")), *(iostd_single["fmc{}_HA".format(fmc)])),
+             Subsignal("mosi", Pins(_fmc_pin(fmc, "LA", 16, "p")), *(iostd_single["fmc{}_LA".format(fmc)])),
              ),
             cls.single_signal("adc_spi_csn", fmc, "HA", 22, "n", iostd_single, idx=0),
             cls.single_signal("adc_spi_csn", fmc, "LA", 11, "n", iostd_single, idx=1),
@@ -126,9 +126,9 @@ class FmcAdc100M10b16chaTdc(_FMC):
             cls.single_signal("adc_sync", fmc, "LA", 30, "p", iostd_single, idx=0),
 
             (cls.signal_name("tdc_spi", fmc), 0,
-             Subsignal("sck", Pins(_fmc_pin(fmc, "LA", 15, "n")), IOStandard(iostd_single["fmc{}_LA".format(fmc)])),
-             Subsignal("miso", Pins(_fmc_pin(fmc, "LA", 16, "n")), IOStandard(iostd_single["fmc{}_LA".format(fmc)])),
-             Subsignal("mosi", Pins(_fmc_pin(fmc, "LA", 13, "p")), IOStandard(iostd_single["fmc{}_LA".format(fmc)])),
+             Subsignal("sck", Pins(_fmc_pin(fmc, "LA", 15, "n")), *(iostd_single["fmc{}_LA".format(fmc)])),
+             Subsignal("miso", Pins(_fmc_pin(fmc, "LA", 16, "n")), *(iostd_single["fmc{}_LA".format(fmc)])),
+             Subsignal("mosi", Pins(_fmc_pin(fmc, "LA", 13, "p")), *(iostd_single["fmc{}_LA".format(fmc)]))
              ),
             cls.single_signal("tdc_spi_csn", fmc, "LA", 31, "n", iostd_single, idx=0),
             cls.single_signal("tdc_spi_csn", fmc, "LA", 31, "p", iostd_single, idx=1),
@@ -147,8 +147,8 @@ class FmcAdc100M10b16chaTdc(_FMC):
             # cls.single_signal("pgood", fmc, "LA", 29, "n", iostd_single, idx=0),
 
             (cls.signal_name("dac_i2c", fmc), 0,
-             Subsignal("scl", Pins(_fmc_pin(fmc, "LA", 27, "n")), IOStandard(iostd_single["fmc{}_LA".format(fmc)])),
-             Subsignal("sda", Pins(_fmc_pin(fmc, "LA", 27, "p")), IOStandard(iostd_single["fmc{}_LA".format(fmc)])),
+             Subsignal("scl", Pins(_fmc_pin(fmc, "LA", 27, "n")), *(iostd_single["fmc{}_LA".format(fmc)])),
+             Subsignal("sda", Pins(_fmc_pin(fmc, "LA", 27, "p")), *(iostd_single["fmc{}_LA".format(fmc)])),
              ),
 
             cls.single_signal("tp35", fmc, "LA", 18, "p", iostd_single, idx=0),

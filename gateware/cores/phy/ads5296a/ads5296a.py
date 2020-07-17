@@ -13,6 +13,14 @@ from artiq.gateware import rtio
 class ADS5296A_XS7(Module):
 
     def __init__(self, adclk_i, lclk_i, dat_i):
+        """ADS5296A ADC phy for Xilinx Series 7
+
+        Args:
+            adclk_i (differential signal): frame clock
+            lclk_i (differential signal): bit clock
+            dat_i (array of differential signals): data lines
+        """
+
 
         # Module constants
         # ==========================================
@@ -45,12 +53,16 @@ class ADS5296A_XS7(Module):
 
         input_lines = [*dat_i, adclk_i]
         lines_delayed = [Signal(name="line_delayed_{}".format(i)) for i in range(9)]
+        # 0 - data[0]
+        # 1 - data[1]
+        # ...
+        # 7 - data[7]
+        # 8 - adclk
         for idx, (input_line, line_delayed) in enumerate(zip(input_lines, lines_delayed)):
             line_buffer = Signal()
             self.specials += DifferentialInput(i_p=input_line.p,
                                                i_n=input_line.n,
                                                o=line_buffer)
-            print(idx)
             self.submodules += XilinxIdelayE2(
                 data_i=line_buffer,
                 data_o=line_delayed,
