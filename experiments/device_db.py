@@ -23,6 +23,12 @@ device_db = {
         "module": "artiq.coredevice.dma",
         "class": "CoreDMA"
     },
+    "i2c_mux": {
+        "type": "local",
+        "module": "coredevice.pca9547",
+        "class": "PCA9547",
+        "arguments": {"address": 0xe0}
+    },
 
     "fmc1": {
         "type": "local",
