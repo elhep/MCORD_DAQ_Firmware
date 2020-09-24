@@ -41,36 +41,35 @@ class TestComm(EnvExperiment):
         self.core.break_realtime()
         self.fmc1.adc[1].daq[8].configure(20, 20)
 
+    @kernel
     def run(self):
-        self.fmc1.initialize()
-        self.test_adc_comm()
-        #
-        # self.fmc1.adc[0].write(0x46, 0x8208)
-        # self.fmc1.adc[0].write(0x45, 0x0)
-        # self.fmc1.adc[0].write(0x25, 0x40)
+        self.core.break_realtime()
+        self.fmc1.reset()
+        # self.test_adc_comm()
 
-        print("Debug")
-        self.debug_daq()
-        print("Clear FIFO")
-        self.clear_adc_rtio()
 
-        print("Debug")
-        for i in range(32):
-            while True:
-                self.fmc1.adc[1].phy.adclk_delay_value.write(i)
-                self.test_daq()
-                print("Samples:")
-                for s in self.fmc1.adc[1].daq[0].samples:
-                    print("{}".format(s))
-                a = input("{}, next value (n), repeat (r)".format(i))
-                if a == 'n':
-                    break
-                elif a == 'r':
-                    continue
-                else:
-                    continue
+        # print("Debug")
+        # self.debug_daq()
+        # print("Clear FIFO")
+        # self.clear_adc_rtio()
 
-        # self.fmc1.adc[0].daq[8].get_samples()
+        # print("Debug")
+        # for i in range(32):
+        #     while True:
+        #         self.fmc1.adc[1].phy.adclk_delay_value.write(i)
+        #         self.test_daq()
+        #         print("Samples:")
+        #         for s in self.fmc1.adc[1].daq[0].samples:
+        #             print("{}".format(s))
+        #         a = input("{}, next value (n), repeat (r)".format(i))
+        #         if a == 'n':
+        #             break
+        #         elif a == 'r':
+        #             continue
+        #         else:
+        #             continue
+
+        # # self.fmc1.adc[0].daq[8].get_samples()
 
 
 

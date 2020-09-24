@@ -1,4 +1,5 @@
 {
+    "image": "dartiq",
     "python_modules": [
         "modules/artiq",
         "modules/liteiclink",

@@ -150,7 +150,7 @@ class TDCGPX2:
         self.regs = [int(x, 16) for x in self.regs]
 
     @kernel
-    def _write_op(self, op, end=False):
+    def write_op(self, op, end=False):
         cs = self.chip_select
         if self.chip_select == 0:
             self.csn_device.off()
@@ -171,7 +171,7 @@ class TDCGPX2:
             delay(10 * us)
 
     @kernel
-    def _write_data(self, data):
+    def write_data(self, data):
         self.spi.set_config_mu(SPI_CONFIG | spi.SPI_END, 8, self.div, 1)  # fixme: chip select
         self.spi.write((data & 0xFF) << 24)
 
@@ -195,13 +195,12 @@ class TDCGPX2:
         return self.spi.read()
 
     @kernel
-    def write_config_registers_rt(self):
-        self._write_op(0x80 | 0, end=False)
-
+    def write_config_registers(self):
+        # TODO: Document
+        self.write_op(0x80 | 0, end=False)
         delay(51*us)
-
         for r in self.regs[:18]:
-            self._write_data(r & 0xFF)
+            self.write_data(r & 0xFF)
             delay(20800 * ns)
 
         if self.chip_select == 0:
@@ -212,31 +211,25 @@ class TDCGPX2:
 
     @kernel
     def power_on_reset(self):
-        self._write_op(0x30, end=True)
+        self.write_op(0x30, end=True)
 
     @kernel
     def initialization_reset(self):
-        self._write_op(0x18, end=True)
+        self.write_op(0x18, end=True)
 
-    def initialize(self):
+    @kernel
+    def reset(self):
+        self.core.break_realtime()
+        self.power_on_reset()
+        delay(4*ms)
+        self.write_config_registers()
+        self.read_configuration()
 
-        print("Initializing TDC GPX-2...")
-
-        @kernel
-        def do_initialize(self):
-            self.core.break_realtime()
-            self.power_on_reset()
-            delay(4*ms)
-            self.write_config_registers_rt()
-            self.read_configuration()
-
-        do_initialize(self)
-
-        for a, (re, ro) in enumerate(zip(self.readout, self.regs[:17])):
-            print("\t{:02x}: E {:02x} R {:02x} S {}".format(a, re, ro, "OK" if re == ro else "Fail"))
-            assert re == ro, "Invalid readout at address {:04x}, expected: {:02x}, got {:02x}".format(a, re, ro)
-
-        print("TDC GPX-2 initialized.")
+        for a in range(17):
+            re = self.readout[a]
+            ro = self.regs[a]
+            if re != ro:
+                raise ValueError("TDC GPX-2: Invalid readout at address")
 
     @kernel
     def start_measurement(self):
@@ -247,7 +240,7 @@ class TDCGPX2:
     def read_configuration(self):
         self.core.break_realtime()
 
-        self._write_op(0x40, end=True)
+        self.write_op(0x40, end=True)
 
         for i in range(24):
             self.readout[i] = self.read_rt(i)

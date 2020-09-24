@@ -113,11 +113,6 @@ class ADS5296A:
 
     @kernel
     def write(self, addr, data):
-        self.core.break_realtime()
-        self.write_rt(addr, data)
-
-    @kernel
-    def write_rt(self, addr, data):
         cs = self.chip_select
         if self.chip_select == 0:
             self.csn_device.off()
@@ -132,20 +127,15 @@ class ADS5296A:
         delay(100 * ns)
 
     @kernel
-    def read(self, addr) -> TInt32:
-        self.core.break_realtime()
-        return self.read_rt(addr)
-
-    @kernel
     def enable_read_rt(self):
-        self.write_rt(0x1, 0x1)
+        self.write(0x1, 0x1)
 
     @kernel
-    def disable_read_rt(self):
+    def disable_read(self):
         self.write_rt(0x1, 0x0)
 
     @kernel
-    def read_rt(self, addr) -> TInt32:
+    def read(self, addr) -> TInt32:
         cs = self.chip_select
         if self.chip_select == 0:
             self.csn_device.off()

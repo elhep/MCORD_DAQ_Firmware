@@ -54,7 +54,6 @@ class FmcAdc100M10bTdc16cha:
 
     @kernel
     def deactivate_all_spi_devices(self):
-        self.core.break_realtime()
         for ttl in self.tdc_csn:
             ttl.on()
         self.clock_csn.on()
@@ -69,10 +68,10 @@ class FmcAdc100M10bTdc16cha:
         delay(1*us)
         self.adc_resetn.on()
         
-
-    def initialize(self):
+    @kernel
+    def reset(self):
         self.deactivate_all_spi_devices()
         self.reset_ad9528_and_adc()
         self.clock.initialize()
-        # for tdc in self.tdc:
-            # tdc.initialize()
+        for tdc in self.tdc:
+            tdc.reset()

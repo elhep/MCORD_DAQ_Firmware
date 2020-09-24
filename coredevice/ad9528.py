@@ -53,42 +53,28 @@ class AD9528:
 
     @kernel
     def reset(self):
-        self.core.break_realtime()
-        self.write_rt(0, 0b10000001)
-
-    @kernel
-    def write(self, addr, val):
-        self.core.break_realtime()
-        self.write_rt(addr, val)
-
-    @kernel
-    def read(self, addr):
-        self.core.break_realtime()
-        return self.read_rt(addr)
+        self.write(0, 0b10000001)
 
     @kernel
     def write_config_regs(self):
-        self.core.break_realtime()
         for r in self.regs:
-            self.write_rt(r[0], r[1])
-        self.write_rt(0xF, 1)
+            self.write(r[0], r[1])
+        self.write(0xF, 1)
         delay(10 * us)
 
     @kernel
     def read_config_regs(self):
-        self.core.break_realtime()
         for i in range(len(self.regs)):
-            readout = self.read_rt(self.regs[i][0])
+            readout = self.read(self.regs[i][0])
             self.config_readout[i] = readout
             delay(10 * us)
 
     @kernel
     def update_registers(self):
-        self.core.break_realtime()
-        self.write_rt(0xF, 1)
+        self.write(0xF, 1)
 
     @kernel
-    def write_rt(self, addr, data):
+    def write(self, addr, data):
         cs = self.chip_select
         if self.chip_select == 0:
             self.csn_device.off()
@@ -103,7 +89,7 @@ class AD9528:
         delay(100 * ns)
 
     @kernel
-    def read_rt(self, addr):
+    def read(self, addr):
         cs = self.chip_select
         if self.chip_select == 0:
             self.csn_device.off()
@@ -123,19 +109,18 @@ class AD9528:
 
         return self.spi.read()
 
+    @kernel
     def initialize(self):
-        print("Resetting AD9512...")
         self.reset()
-        print("Writing AD9512 configuration...")
         self.write_config_regs()
-        print("Verifying written config...")
         self.read_config_regs()
-        for r, ro in zip(self.regs, self.config_readout):
+        for idx in range(len(self.regs)):
+            r = self.regs[idx]
+            ro = self.config_readout[idx]
             if r[0] >= 0x505:
                 continue
-            print("\t{:04x}: E {:02x} R {:02x} S {}".format(r[0], r[1], ro, "OK" if r[1] == ro else "Fail"))
-            assert r[1] == ro, "Invalid readout at address {:04x}, expected: {:02x}, got {:02x}".format(r[0], r[1], ro)
-        print("Verification successful")
+            if r[1] != ro:
+                raise ValueError("AD9528: Invalid readout")
 
     def get_status(self):
         sreg0 = self.read(0x0508)

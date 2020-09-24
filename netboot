@@ -1,3 +1,4 @@
 #!/bin/bash
 artiq_flash -d ./ --srcbuild -V build -t afck1v1 load
+sleep 5s
 artiq_netboot -f ./build/software/runtime/runtime.bin -b 192.168.95.202
