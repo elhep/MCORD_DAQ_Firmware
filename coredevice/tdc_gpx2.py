@@ -218,7 +218,7 @@ class TDCGPX2:
         self.write_op(0x18, end=True)
 
     @kernel
-    def reset(self):
+    def initialize(self):
         self.core.break_realtime()
         self.power_on_reset()
         delay(4*ms)

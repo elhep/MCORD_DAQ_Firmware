@@ -13,16 +13,6 @@ class TestComm(EnvExperiment):
         self.fmc1 = self.get_device("fmc1")  # type: FmcAdc100M10bTdc16cha
 
     @kernel
-    def test_adc_comm(self):
-        self.core.break_realtime()
-        self.fmc1.adc[1].write_rt(0xA, 0xF00F)
-        self.fmc1.adc[1].enable_read_rt()
-        r = self.fmc1.adc[1].read_rt(0xA)
-        delay(100 * us)
-        self.fmc1.adc[1].disable_read_rt()
-        assert r == 0xF00F
-
-    @kernel
     def test_daq(self):
         self.core.break_realtime()
         self.fmc1.adc[1].daq[0].clear_fifo()
@@ -42,25 +32,10 @@ class TestComm(EnvExperiment):
         self.fmc1.adc[1].daq[8].configure(20, 20)
 
     @kernel
-    def initialize(self):
+    def run(self):
         self.core.break_realtime()
         self.fmc1.initialize()
-
-    def run(self):
-        self.initialize()
-        pprint(self.fmc1.clock.get_status())
         
-        # delay(10*ms)
-
-        # print(self.fmc1.clock.read(0x0508))
-        # self.core.break_realtime()
-
-        # self.fmc1.clk0_ttl.input()
-        # delay(1*ms)
-        # self.fmc1.clk0_edge_counter.gate_rising(1*ms)
-        # delay(2*ms)
-        # print("Edge counter:", self.fmc1.clk0_edge_counter.fetch_count())
-        # # self.test_adc_comm()
 
 
         # print("Debug")

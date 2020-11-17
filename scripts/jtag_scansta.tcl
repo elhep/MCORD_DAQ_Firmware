@@ -1,8 +1,8 @@
 #set JTAG */xilinx_tcf/Xilinx/*
-set JTAG */xilinx_tcf/Digilent/*
+set JTAG jordan.pw:3121/xilinx_tcf/Digilent/210299A5607E
 
 catch open_hw
-catch {connect_hw_server -url localhost:3121}
+catch {connect_hw_server -url jordan.pw:3121}
 get_hw_targets
 current_hw_target [get_hw_targets $JTAG]
 set_property PARAM.FREQUENCY 3000000 [get_hw_targets $JTAG]

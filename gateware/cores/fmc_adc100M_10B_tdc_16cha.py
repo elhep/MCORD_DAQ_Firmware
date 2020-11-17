@@ -4,6 +4,7 @@ from migen.build.generic_platform import *
 from artiq.gateware.rtio.phy.ttl_simple import *
 from artiq.gateware.rtio.phy import ttl_serdes_7series
 from artiq.gateware.rtio.phy.spi2 import SPIMaster
+from artiq.gateware.rtio.phy.edge_counter import SimpleEdgeCounter
 
 from misoc.cores import gpio
 from artiq.gateware import rtio
@@ -206,6 +207,8 @@ class FmcAdc100M10b16chaTdc(_FMC):
         target.submodules += phy
         target.add_rtio_channels(rtio.Channel.from_phy(phy), "fmc{}_adc_spi (SPIMaster)".format(fmc))
 
+        
+
         # ADC
 
         for adc_id in range(2):
@@ -274,3 +277,31 @@ class FmcAdc100M10b16chaTdc(_FMC):
             phy = ttl_serdes_7series.InOut_8X(pads.p, pads.n)
             target.submodules += phy
             target.add_rtio_channels(rtio.Channel.from_phy(phy, ififo_depth=64), "fmc{}_trig (InOut_8X)".format(fmc))
+
+        # Frequency counters
+
+        clk0_m2c_pads = target.platform.request(f"fmc{fmc}_clk0_m2c")
+        phy_clk0_m2c = Input(clk0_m2c_pads.p, clk0_m2c_pads.n)
+        clk0_m2c_edge_counter = SimpleEdgeCounter(phy_clk0_m2c.input_state)
+
+        phy_clk0_m2c.input_state.attr.add(("mark_debug", "true"))
+
+        clk1_m2c_pads = target.platform.request(f"fmc{fmc}_clk1_m2c")
+        phy_clk1_m2c = Input(clk1_m2c_pads.p, clk1_m2c_pads.n)
+        clk1_m2c_edge_counter = SimpleEdgeCounter(phy_clk1_m2c.input_state)
+
+        phy_clk1_m2c.input_state.attr.add(("mark_debug", "true"))
+
+        target.submodules += [phy_clk0_m2c, clk0_m2c_edge_counter, phy_clk1_m2c, clk1_m2c_edge_counter]
+
+        target.add_rtio_channels([
+            rtio.Channel.from_phy(phy_clk0_m2c),
+            rtio.Channel.from_phy(clk0_m2c_edge_counter),
+            rtio.Channel.from_phy(phy_clk1_m2c),
+            rtio.Channel.from_phy(clk1_m2c_edge_counter)
+        ], [
+            f"fmc{fmc}_clk0_m2c_ttl_input",
+            f"fmc{fmc}_clk0_m2c_edge_counter",
+            f"fmc{fmc}_clk1_m2c_ttl_input",
+            f"fmc{fmc}_clk1_m2c_edge_counter"
+        ])

@@ -1,5 +1,5 @@
 {
-    "image": "dartiq",
+    "image": "technosystem/dartiq",
     "python_modules": [
         "modules/artiq",
         "modules/liteiclink",

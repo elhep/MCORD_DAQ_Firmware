@@ -50,10 +50,13 @@ class AD9528:
         self.regs = []
         for rr in r[1:]:
             self.regs.append([int32(int(x.strip(), 16)) for x in rr.split(',')[:-1]])
+        print(self.regs)
 
     @kernel
     def reset(self):
         self.write(0, 0b10000001)
+        delay(10 * us)
+        self.write(0, 0x3C)
 
     @kernel
     def write_config_regs(self):
@@ -122,9 +125,17 @@ class AD9528:
             if r[1] != ro:
                 raise ValueError("AD9528: Invalid readout")
 
-    def get_status(self):
+    @kernel
+    def get_status_mu(self):
+        self.core.break_realtime()
         sreg0 = self.read(0x0508)
+        delay(1*ms)
         sreg1 = self.read(0x0509)
+        return sreg0, sreg1
+
+    def get_status(self):
+        sreg0, sreg1 = self.get_status_mu()
+        print(sreg0, sreg1)
 
         return {
             "pll2_status": bool(sreg0 & (1 << 7)),

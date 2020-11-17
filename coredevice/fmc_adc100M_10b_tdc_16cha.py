@@ -1,8 +1,9 @@
 from artiq.coredevice import spi2 as spi
 from artiq.coredevice.ttl import TTLInOut, TTLOut
+from artiq.coredevice.edge_counter import EdgeCounter
 from artiq.language.units import ns, us
 from coredevice.ad9528 import AD9528
-from coredevice.ad9528_default_config import AD9528_DEFAULT_CONFIG
+from coredevice.ad9528_default_config import AD9528_DEFAULT_CONFIG_2
 from coredevice.ads5296a import ADS5296A
 from coredevice.tdc_gpx2 import TDCGPX2
 from artiq.language.core import kernel
@@ -44,12 +45,20 @@ class FmcAdc100M10bTdc16cha:
 
         if with_trig:
             self.trig = TTLInOut(dmgr, channel + 88, core_device)
+            freq_counter_channel_offset = channel + 89
+        else:
+            freq_counter_channel_offset = channel + 88
+        
+        self.clk0_ttl = TTLInOut(dmgr, freq_counter_channel_offset+0, core_device)
+        self.clk0_edge_counter = EdgeCounter(dmgr, freq_counter_channel_offset+1, core_device=core_device)
+        self.clk1_ttl = TTLInOut(dmgr, freq_counter_channel_offset+2, core_device)
+        self.clk1_edge_counter = EdgeCounter(dmgr, freq_counter_channel_offset+3, core_device=core_device)
 
         self.clock = AD9528(dmgr=dmgr,
                             spi_device=self.tdc_spi,
                             chip_select=self.clock_csn,
                             spi_freq=500_000,
-                            config=AD9528_DEFAULT_CONFIG,
+                            config=AD9528_DEFAULT_CONFIG_2,
                             core_device=core_device)
 
     @kernel
@@ -69,9 +78,11 @@ class FmcAdc100M10bTdc16cha:
         self.adc_resetn.on()
         
     @kernel
-    def reset(self):
+    def initialize(self):
         self.deactivate_all_spi_devices()
         self.reset_ad9528_and_adc()
         self.clock.initialize()
+        for adc in self.adc:
+            adc.initialize()
         for tdc in self.tdc:
-            tdc.reset()
+            tdc.initialize()

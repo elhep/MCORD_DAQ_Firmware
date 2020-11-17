@@ -127,12 +127,12 @@ class ADS5296A:
         delay(100 * ns)
 
     @kernel
-    def enable_read_rt(self):
+    def enable_read(self):
         self.write(0x1, 0x1)
 
     @kernel
     def disable_read(self):
-        self.write_rt(0x1, 0x0)
+        self.write(0x1, 0x0)
 
     @kernel
     def read(self, addr) -> TInt32:
@@ -156,9 +156,20 @@ class ADS5296A:
     @kernel
     def enable_test_pattern(self, pattern):
         self.core.break_realtime()
-        self.write_rt(0x1C, (1 << 14) | (pattern & 0xFFF))
+        self.write(0x1C, (1 << 14) | (pattern & 0xFFF))
 
     @kernel
     def disable_test_pattern(self):
         self.core.break_realtime()
-        self.write_rt(0x1C, 0)
+        self.write(0x1C, 0)
+
+    @kernel
+    def initialize(self):
+        self.core.break_realtime()
+        self.write(0xA, 0xF00F)
+        self.enable_read()
+        r = self.read(0xA)
+        delay(100 * us)
+        self.disable_read()
+        if r != 0xF00F:
+            raise ValueError("ADS5269: Invalid readout")
