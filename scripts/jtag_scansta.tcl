@@ -1,5 +1,5 @@
-#set JTAG */xilinx_tcf/Xilinx/*
-set JTAG jordan.pw:3121/xilinx_tcf/Digilent/210299A5607E
+set JTAG */xilinx_tcf/Digilent/210299A57926
+#set JTAG jordan.pw:3121/xilinx_tcf/Digilent/210299A57926
 
 catch open_hw
 catch {connect_hw_server -url jordan.pw:3121}

@@ -207,8 +207,6 @@ class FmcAdc100M10b16chaTdc(_FMC):
         target.submodules += phy
         target.add_rtio_channels(rtio.Channel.from_phy(phy), "fmc{}_adc_spi (SPIMaster)".format(fmc))
 
-        
-
         # ADC
 
         for adc_id in range(2):
@@ -284,13 +282,9 @@ class FmcAdc100M10b16chaTdc(_FMC):
         phy_clk0_m2c = Input(clk0_m2c_pads.p, clk0_m2c_pads.n)
         clk0_m2c_edge_counter = SimpleEdgeCounter(phy_clk0_m2c.input_state)
 
-        phy_clk0_m2c.input_state.attr.add(("mark_debug", "true"))
-
         clk1_m2c_pads = target.platform.request(f"fmc{fmc}_clk1_m2c")
         phy_clk1_m2c = Input(clk1_m2c_pads.p, clk1_m2c_pads.n)
         clk1_m2c_edge_counter = SimpleEdgeCounter(phy_clk1_m2c.input_state)
-
-        phy_clk1_m2c.input_state.attr.add(("mark_debug", "true"))
 
         target.submodules += [phy_clk0_m2c, clk0_m2c_edge_counter, phy_clk1_m2c, clk1_m2c_edge_counter]
 
@@ -305,3 +299,22 @@ class FmcAdc100M10b16chaTdc(_FMC):
             f"fmc{fmc}_clk1_m2c_ttl_input",
             f"fmc{fmc}_clk1_m2c_edge_counter"
         ])
+
+        # Debug counters
+
+        for adc_id in range(2):
+            adc_phy = getattr(target, "fmc{}_adc{}_phy".format(fmc, adc_id))
+            phy_adc_lclk = Input(adc_phy.lclk)
+            phy_adc_lclk_counter = SimpleEdgeCounter(phy_adc_lclk.input_state)
+
+            target.submodules += [phy_adc_lclk, phy_adc_lclk_counter]
+            target.add_rtio_channels([
+                rtio.Channel.from_phy(phy_adc_lclk),
+                rtio.Channel.from_phy(phy_adc_lclk_counter),
+            ],[
+                f"fmc{fmc}_adc{adc_id}_lclk_ttl_input",
+                f"fmc{fmc}_adc{adc_id}_lclk_edge_counter",
+            ])
+
+    
+

@@ -4,3 +4,4 @@ rtlinkcsr**
 build/**
 artiq_afck1v1/**
 **.pyon
+env/**

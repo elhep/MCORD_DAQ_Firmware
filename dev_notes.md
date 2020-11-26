@@ -48,3 +48,9 @@ Issue: It seems that there is no clock on FMC1 CLK0. This clock is observed to i
 Steps:
 
 1. Verify that this setup can work.
+
+
+# 17.11.2020
+
+Boot AFCK via Vivado and load firmware with netboot
+ILA clocked from dclk does not arm. Check if ADC must be somehow enabled?

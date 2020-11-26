@@ -3,7 +3,7 @@ from artiq.coredevice.ttl import TTLInOut, TTLOut
 from artiq.coredevice.edge_counter import EdgeCounter
 from artiq.language.units import ns, us
 from coredevice.ad9528 import AD9528
-from coredevice.ad9528_default_config import AD9528_DEFAULT_CONFIG_2
+from coredevice.ad9528_default_config import AD9528_DEFAULT_CONFIG, AD9528_DEBUG_CONFIG
 from coredevice.ads5296a import ADS5296A
 from coredevice.tdc_gpx2 import TDCGPX2
 from artiq.language.core import kernel
@@ -54,11 +54,16 @@ class FmcAdc100M10bTdc16cha:
         self.clk1_ttl = TTLInOut(dmgr, freq_counter_channel_offset+2, core_device)
         self.clk1_edge_counter = EdgeCounter(dmgr, freq_counter_channel_offset+3, core_device=core_device)
 
+        self.adc0_lclk_ttl = TTLInOut(dmgr, freq_counter_channel_offset+4, core_device)
+        self.adc0_lclk_edge_counter = EdgeCounter(dmgr, freq_counter_channel_offset+5, core_device=core_device)
+        self.adc1_lclk_ttl = TTLInOut(dmgr, freq_counter_channel_offset+6, core_device)
+        self.adc1_lclk_edge_counter = EdgeCounter(dmgr, freq_counter_channel_offset+7, core_device=core_device)
+
         self.clock = AD9528(dmgr=dmgr,
                             spi_device=self.tdc_spi,
                             chip_select=self.clock_csn,
                             spi_freq=500_000,
-                            config=AD9528_DEFAULT_CONFIG_2,
+                            config=AD9528_DEBUG_CONFIG,
                             core_device=core_device)
 
     @kernel

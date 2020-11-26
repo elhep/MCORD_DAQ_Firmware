@@ -73,6 +73,7 @@ class ADS5296A_XS7(Module):
         # Clocking
         lclk_ibuf = Signal()
         lclk_bufg = Signal()
+        self.lclk = lclk_bufg
         lclk_bufio = Signal()
 
         self.clock_domains.cd_adclk_clkdiv = cd_div4 = ClockDomain()
@@ -159,13 +160,13 @@ class ADS5296A_XS7(Module):
                                       i_DYNCLKSEL=0)
 
         # Debugging definition
-        # self.bitslip_done.attr.add(("mark_debug", "true"))
-        # bitslip_cnt.attr.add(("mark_debug", "true"))
-        # bitslip.attr.add(("mark_debug", "true"))
-        # self.data_o[0].attr.add(("mark_debug", "true"))
-        # csr.data0_delay_value.attr.add(("mark_debug", "true"))
-        # self.data_o[8].attr.add(("mark_debug", "true"))
-        # csr.adclk_delay_value.attr.add(("mark_debug", "true"))
+        self.bitslip_done.attr.add(("mark_debug", "true"))
+        bitslip_cnt.attr.add(("mark_debug", "true"))
+        bitslip.attr.add(("mark_debug", "true"))
+        self.data_o[0].attr.add(("mark_debug", "true"))
+        csr.data0_delay_value.attr.add(("mark_debug", "true"))
+        self.data_o[8].attr.add(("mark_debug", "true"))
+        csr.adclk_delay_value.attr.add(("mark_debug", "true"))
 
 
 class SimulationWrapper(Module):

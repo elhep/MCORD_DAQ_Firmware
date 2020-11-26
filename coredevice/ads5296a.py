@@ -49,22 +49,11 @@ class AdcDaq:
     def get_samples(self):
         self.incomplete = False
         for _ in range(self.pretrigger+self.posttrigger):
-            try:
-                # r = rtio_input_timestamped_data(self.core.seconds_to_mu(1*us), self.channel)
-                # ts = r[0]
-                # data = r[1]
-                data = rtio_input_data(self.channel)
-                # print(_, ts, data)
-                self.store_sample(data)
-                # if ts < 0:
-                #     self.incomplete = True
-                #     break
-                # else:
-                #     self.store_sample(data)
-            except RTIOOverflow:
-                print("Overflow")
-                self.incomplete = True
-
+            timestamp, sample = rtio_input_timestamped_data(self.core.seconds_to_mu(100*us), self.channel)
+            if timestamp >= 0:
+                self.store_sample(sample)
+            else:
+                raise ValueError("DAQ incomplete data")
 
     @kernel
     def clear_fifo(self):
@@ -164,8 +153,7 @@ class ADS5296A:
         self.write(0x1C, 0)
 
     @kernel
-    def initialize(self):
-        self.core.break_realtime()
+    def test_spi(self):
         self.write(0xA, 0xF00F)
         self.enable_read()
         r = self.read(0xA)
@@ -173,3 +161,14 @@ class ADS5296A:
         self.disable_read()
         if r != 0xF00F:
             raise ValueError("ADS5269: Invalid readout")
+
+    @kernel
+    def initialize(self):
+        self.core.break_realtime()
+        self.test_spi()
+        self.write(0x46, 0x8100 | 1 << 3)
+        # self.write(0x1C, 1 << 14 | 3)
+        self.write(0x26, 1 << 6)
+
+
+        

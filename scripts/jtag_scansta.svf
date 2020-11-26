@@ -1,0 +1,10 @@
+! Example code taken from TI tutorial
+TRST ON;
+TRST OFF;
+SIR 8 TDI (00); ! AddressScanBridge
+SIR 8 TDI (A0); ! Loadinstruction to enable transparent mode for LSP0
+SIR 8 TDI (a5); ! Verify SIR
+SDR 8 TDI (5a); ! Verify SDR
+SIR 8 TDI (C3); ! Try to load GOTOWAIT in ScanBridge
+SDR 8 TDI (5a); ! Verify that ScanBridge did not recognize GOTOWAIT
+

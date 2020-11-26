@@ -31,10 +31,12 @@ class AdcPhyDaq(Module):
         # Data clock domain
 
         trigger_dclk = Signal()
+        trigger_dclk.attr.add(("mark_debug", "true"))
         pretrigger_len_dclk = Signal(max=max_samples, reset=16)
         posttrigger_len_dclk = Signal(max=max_samples, reset=16)
 
         current_address_dclk = Signal.like(memory_write_port.adr, reset=0)
+        current_address_dclk.attr.add(("mark_debug", "true"))
         data_start_address_dclk = Signal.like(current_address_dclk)
         data_start_address_reg_dclk = Signal.like(data_start_address_dclk)
         trig_prev_dclk = Signal()
@@ -92,7 +94,7 @@ class AdcPhyDaq(Module):
                    NextState("PRETRIGGER"))
                 )
         self.submodules.fsm_dclk = fsm_dclk
-
+        
         # --------------------------------------------------------------------------------------------------------------
         # RIO Clock Domain
 
@@ -101,12 +103,15 @@ class AdcPhyDaq(Module):
             rtlink.IInterface(data_width=10, timestamped=True))
 
         trigger_rio_phy = Signal()
+        trigger_rio_phy.attr.add(("mark_debug", "true"))
         pretrigger_len_rio_phy = Signal.like(pretrigger_len_dclk)
         posttrigger_len_rio_phy = Signal.like(posttrigger_counter_dclk)
         transfer_done_rio_phy = Signal()
+        transfer_done_rio_phy.attr.add(("mark_debug", "true"))
 
         data_start_address_reg_rio_phy = Signal.like(data_start_address_reg_dclk)
         transfer_en_rio_phy = Signal()
+        transfer_en_rio_phy.attr.add(("mark_debug", "true"))
 
         counter_rio_phy = Signal.like(memory_read_port.adr)
 

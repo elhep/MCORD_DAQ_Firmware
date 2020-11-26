@@ -50,7 +50,6 @@ class AD9528:
         self.regs = []
         for rr in r[1:]:
             self.regs.append([int32(int(x.strip(), 16)) for x in rr.split(',')[:-1]])
-        print(self.regs)
 
     @kernel
     def reset(self):
@@ -114,8 +113,11 @@ class AD9528:
 
     @kernel
     def initialize(self):
+        # Let's have a known starting point
         self.reset()
+        # Configure according to data given at initalization
         self.write_config_regs()
+        # Verify configuration
         self.read_config_regs()
         for idx in range(len(self.regs)):
             r = self.regs[idx]
@@ -124,6 +126,10 @@ class AD9528:
                 continue
             if r[1] != ro:
                 raise ValueError("AD9528: Invalid readout")
+        # Verify VCXO status
+        sreg0, sreg1 = self.get_status_mu()
+        if not (sreg0 & (1 << 5)):
+            raise ValueError("AD9528: VCXO missing")
 
     @kernel
     def get_status_mu(self):
@@ -135,7 +141,6 @@ class AD9528:
 
     def get_status(self):
         sreg0, sreg1 = self.get_status_mu()
-        print(sreg0, sreg1)
 
         return {
             "pll2_status": bool(sreg0 & (1 << 7)),

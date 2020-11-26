@@ -13,24 +13,16 @@ class TestComm(EnvExperiment):
         self.fmc1 = self.get_device("fmc1")  # type: FmcAdc100M10bTdc16cha
 
     @kernel
-    def test_adc_comm(self):
+    def test_daq(self, adc=0, daq=0):
         self.core.break_realtime()
-        self.fmc1.adc[1].write_rt(0xA, 0xF00F)
-        self.fmc1.adc[1].enable_read_rt()
-        r = self.fmc1.adc[1].read_rt(0xA)
+        self.fmc1.adc[adc].enable_test_pattern(0x123)
+        self.clear_adc_rtio()
+        self.fmc1.adc[adc].daq[daq].clear_fifo()
+        self.fmc1.adc[adc].daq[daq].configure(20, 20)
         delay(100 * us)
-        self.fmc1.adc[1].disable_read_rt()
-        assert r == 0xF00F
-
-    @kernel
-    def test_daq(self):
-        self.core.break_realtime()
-        self.fmc1.adc[1].daq[0].clear_fifo()
-        self.fmc1.adc[1].daq[0].configure(20, 20)
+        self.fmc1.adc[adc].daq[daq].trigger()
         delay(100 * us)
-        self.fmc1.adc[1].daq[0].trigger()
-        delay(100 * us)
-        self.fmc1.adc[1].daq[0].get_samples()
+        self.fmc1.adc[adc].daq[daq].get_samples()
 
     @kernel
     def clear_adc_rtio(self):
@@ -45,47 +37,40 @@ class TestComm(EnvExperiment):
     def initialize(self):
         self.core.break_realtime()
         self.fmc1.initialize()
+    
+    def get_frequency(self, fmc, channel_prefix):
+        ttl = getattr(fmc, f"{channel_prefix}_ttl")
+        edge_counter = getattr(fmc, f"{channel_prefix}_edge_counter")
+        print(f"{channel_prefix} : {self.get_freq(ttl, edge_counter)/1000} MHz")
 
+    @kernel
+    def get_freq(self, ttl, edge_counter):
+        self.core.break_realtime()
+        ttl.input()
+        delay(1*ms)
+        edge_counter.gate_rising(1*ms)
+        delay(2*ms)
+        return edge_counter.fetch_count()
+
+    @kernel
+    def set_delay(self, val):
+        self.core.break_realtime()
+        self.fmc1.adc[0].phy.adclk_delay_value.write_rt(val)
+        
     def run(self):
         self.initialize()
-        pprint(self.fmc1.clock.get_status())
+        self.get_frequency(self.fmc1, "clk0")
+        self.get_frequency(self.fmc1, "clk1")
+        self.get_frequency(self.fmc1, "adc0_lclk")
+        self.get_frequency(self.fmc1, "adc1_lclk")
         
-        # delay(10*ms)
-
-        # print(self.fmc1.clock.read(0x0508))
-        # self.core.break_realtime()
-
-        # self.fmc1.clk0_ttl.input()
-        # delay(1*ms)
-        # self.fmc1.clk0_edge_counter.gate_rising(1*ms)
-        # delay(2*ms)
-        # print("Edge counter:", self.fmc1.clk0_edge_counter.fetch_count())
-        # # self.test_adc_comm()
-
-
-        # print("Debug")
-        # self.debug_daq()
-        # print("Clear FIFO")
-        # self.clear_adc_rtio()
-
-        # print("Debug")
         # for i in range(32):
-        #     while True:
-        #         self.fmc1.adc[1].phy.adclk_delay_value.write(i)
-        #         self.test_daq()
-        #         print("Samples:")
-        #         for s in self.fmc1.adc[1].daq[0].samples:
-        #             print("{}".format(s))
-        #         a = input("{}, next value (n), repeat (r)".format(i))
-        #         if a == 'n':
-        #             break
-        #         elif a == 'r':
-        #             continue
-        #         else:
-        #             continue
+        #     self.set_delay(i)
+        #     input(f"{i} [ENTER]")
 
-        # # self.fmc1.adc[0].daq[8].get_samples()
 
+        # self.test_daq(adc=0)
+        
 
 
 
