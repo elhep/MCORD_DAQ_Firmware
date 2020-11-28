@@ -79,7 +79,7 @@ class FmcAdc100M10bTdc16cha:
         self.core.break_realtime()
         self.adc_sync.off()
         self.adc_resetn.off()
-        delay(1*us)
+        delay(100*us)
         self.adc_resetn.on()
         
     @kernel

@@ -13,10 +13,18 @@ class TestComm(EnvExperiment):
         self.fmc1 = self.get_device("fmc1")  # type: FmcAdc100M10bTdc16cha
 
     @kernel
+    def debug_adc_interface(self, pattern, adc=0):
+        self.core.break_realtime()
+        if pattern < 0:
+            self.fmc1.adc[adc].enable_ramp_test_pattern()    
+        else:
+            self.fmc1.adc[adc].enable_test_pattern(pattern)
+
+
+    @kernel
     def test_daq(self, adc=0, daq=0):
         self.core.break_realtime()
-        self.fmc1.adc[adc].enable_test_pattern(0x123)
-        self.clear_adc_rtio()
+        self.fmc1.adc[adc].enable_test_pattern(0x1)
         self.fmc1.adc[adc].daq[daq].clear_fifo()
         self.fmc1.adc[adc].daq[daq].configure(20, 20)
         delay(100 * us)
@@ -25,13 +33,9 @@ class TestComm(EnvExperiment):
         self.fmc1.adc[adc].daq[daq].get_samples()
 
     @kernel
-    def clear_adc_rtio(self):
-        self.fmc1.adc[1].daq[0].clear_fifo()
-
-    @kernel
     def debug_daq(self):
         self.core.break_realtime()
-        self.fmc1.adc[1].daq[8].configure(20, 20)
+        self.fmc1.adc[0].daq[8].configure(20, 20)
 
     @kernel
     def initialize(self):
@@ -64,12 +68,18 @@ class TestComm(EnvExperiment):
         self.get_frequency(self.fmc1, "adc0_lclk")
         self.get_frequency(self.fmc1, "adc1_lclk")
         
+        for i in range(10):
+            # self.debug_adc_interface(1 << i, adc=1)
+            self.debug_adc_interface(-1, adc=1)
+
+            input(f"{i} [ENTER]")
+
         # for i in range(32):
         #     self.set_delay(i)
         #     input(f"{i} [ENTER]")
 
 
-        # self.test_daq(adc=0)
+        # self.test_daq(adc=1)
         
 
 

@@ -145,12 +145,18 @@ class ADS5296A:
     @kernel
     def enable_test_pattern(self, pattern):
         self.core.break_realtime()
-        self.write(0x1C, (1 << 14) | (pattern & 0xFFF))
+        self.write(0x26, (pattern & 0xFF) << 8)
+        self.write(0x25, 1 << 4 | ((pattern >> 8) & 0x3))
+   
+    @kernel
+    def enable_ramp_test_pattern(self):
+        self.core.break_realtime()
+        self.write(0x25, 1 << 6)
 
     @kernel
     def disable_test_pattern(self):
         self.core.break_realtime()
-        self.write(0x1C, 0)
+        self.write(0x25, 0)
 
     @kernel
     def test_spi(self):
@@ -166,9 +172,8 @@ class ADS5296A:
     def initialize(self):
         self.core.break_realtime()
         self.test_spi()
-        self.write(0x46, 0x8100 | 1 << 3)
-        # self.write(0x1C, 1 << 14 | 3)
-        self.write(0x26, 1 << 6)
+        # self.write(0x1C, 1 << 14 | (0x3e0))
+        self.write(0x46, 0x8100 | (1<<3))
 
 
         
