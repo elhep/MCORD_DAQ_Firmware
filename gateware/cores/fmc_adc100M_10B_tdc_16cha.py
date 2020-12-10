@@ -212,12 +212,15 @@ class FmcAdc100M10b16chaTdc(_FMC):
         for adc_id in range(2):
             # There is single PHY per ADS5296A chip, but each channel has its own DAQ module
             dclk_name = "fmc{}_adc{}_dclk".format(fmc, adc_id)
+            adc_lclk = target.platform.request(cls.signal_name("adc_out_lclk", fmc), adc_id)
             phy = ADS5296A_XS7(
                 adclk_i=target.platform.request(cls.signal_name("adc_out_adclk", fmc), adc_id),
-                lclk_i=target.platform.request(cls.signal_name("adc_out_lclk", fmc), adc_id),
+                lclk_i=adc_lclk,
                 dat_i=[target.platform.request(cls.signal_name("adc_out_out{}".format(i), fmc), adc_id) for i in range(8)])
+            target.platform.add_period_constraint(adc_lclk.p, 2.)
             target.platform.add_period_constraint(phy.cd_adclk_clkdiv.clk, 10.)
             target.platform.add_period_constraint(phy.lclk_bufio, 2.)
+            target.platform.add_period_constraint(phy.lclk, 10.)
             phy_renamed_cd = ClockDomainsRenamer({"adclk_clkdiv": dclk_name})(phy)
             setattr(target.submodules, "fmc{}_adc{}_phy".format(fmc, adc_id), phy_renamed_cd)
             target.add_rtio_channels(

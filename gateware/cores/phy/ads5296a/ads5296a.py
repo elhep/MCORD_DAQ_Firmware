@@ -1,7 +1,7 @@
 from migen import *
 from migen.build.generic_platform import *
 from migen.genlib.io import DifferentialInput
-from migen.genlib.cdc import PulseSynchronizer
+from migen.genlib.cdc import PulseSynchronizer, MultiReg
 from migen.genlib.resetsync import AsyncResetSynchronizer
 
 from gateware.cores.xilinx import XilinxIdelayE2
@@ -42,6 +42,8 @@ class ADS5296A_XS7(Module):
         regs = [
             *[("data{}_delay_value".format(x), 5) for x in range(9)],
             ("adclk_delay_value", 5),
+            ("phy_reset", 1, 1),
+            ("bitslip_done", 1, 0, "ro")
         ]
 
         csr = RtLinkCSR(regs, "ads5296a_phy")
@@ -76,8 +78,8 @@ class ADS5296A_XS7(Module):
         self.lclk = lclk_bufg
         self.lclk_bufio = lclk_bufio = Signal()
 
-        self.clock_domains.cd_adclk_clkdiv = cd_div4 = ClockDomain()
-        self.specials += [AsyncResetSynchronizer(cd_div4, ResetSignal("sys"))]
+        self.clock_domains.cd_adclk_clkdiv = cd_adclk_clkdiv = ClockDomain()
+        self.specials += [AsyncResetSynchronizer(cd_adclk_clkdiv, csr.phy_reset)]
 
         self.specials += DifferentialInput(i_p=lclk_i.p,
                                            i_n=lclk_i.n,
@@ -93,7 +95,7 @@ class ADS5296A_XS7(Module):
                                   o_O=lclk_bufg)
         self.specials += Instance("BUFG",
                                   i_I=lclk_bufg,
-                                  o_O=cd_div4.clk)
+                                  o_O=cd_adclk_clkdiv.clk)
 
         # Bitslip logic
         bitslip = Signal()
@@ -108,11 +110,12 @@ class ADS5296A_XS7(Module):
                   bitslip.eq(1))),
         ]
 
+        self.specials += MultiReg(i=self.bitslip_done, o=csr.bitslip_done, odomain="rio_phy")
+
         # ISERDES
         # For 10b deserialization we'll be using two ISERDES modules connected in MASTER-SLAVE mode.
 
-        # In this mode stb_o is just div4 clock
-        self.specials += Instance("BUFG", i_I=cd_div4.clk, o_O=self.data_clk_o)
+        self.specials += Instance("BUFG", i_I=cd_adclk_clkdiv.clk, o_O=self.data_clk_o)
 
         for idx, (line_delayed, dat_o) in enumerate(zip(lines_delayed, self.data_o)):
             shift1 = Signal(name="shift1_{}".format(idx))

@@ -3,7 +3,7 @@ from artiq.coredevice.rtio import rtio_output, rtio_input_timestamped_data, rtio
 from artiq.language import TInt32, TInt64
 from artiq.language.core import kernel, delay_mu
 from artiq.language.core import rpc
-from artiq.language.units import us, ns
+from artiq.language.units import us, ns, ms
 from coredevice.rtlink_csr import RtlinkCsr
 from artiq.coredevice.ttl import TTLOut
 from artiq.coredevice.exceptions import RTIOOverflow
@@ -96,7 +96,10 @@ class ADS5296A:
             [5, "data5_delay_value", 5],
             [6, "data6_delay_value", 5],
             [7, "data7_delay_value", 5],
-            [8, "adclk_delay_value", 5]
+            [8, "data8_delay_value", 5],
+            [9, "adclk_delay_value", 5],
+            [10, "phy_reset", 1],
+            [11, "bitslip_done", 1]
         ]
 
         self.phy = RtlinkCsr(dmgr, channel, config=phy_config, core_device=core_device)
@@ -176,6 +179,9 @@ class ADS5296A:
         self.test_spi()
         # self.write(0x1C, 1 << 14 | (0x3e0))
         self.write(0x46, 0x8100 | (1<<3))
+        # delay(10*ms)
+        self.phy.phy_reset.write_rt(0)
+
 
 
         

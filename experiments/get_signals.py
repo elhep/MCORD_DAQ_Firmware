@@ -40,7 +40,7 @@ class TestComm(EnvExperiment):
             self.fmc1.adc[adc].daq[i].get_samples()
 
     def run(self):
-        self.initialize()
+        # self.initialize()
         self.setup(self.adc)
         self.trigger(self.adc)
         self.get_samples(self.adc)

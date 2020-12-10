@@ -61,7 +61,7 @@ class TestComm(EnvExperiment):
         self.fmc1.adc[0].phy.adclk_delay_value.write_rt(val)
         
     def run(self):
-        # self.initialize()
+        self.initialize()
         self.get_frequency(self.fmc1, "clk0")
         self.get_frequency(self.fmc1, "clk1")
         self.get_frequency(self.fmc1, "adc0_lclk")

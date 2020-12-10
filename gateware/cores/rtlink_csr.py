@@ -8,7 +8,7 @@ class RtLinkCSR(Module):
 
     """
     regs:
-        - (signal_name, length)
+        - (signal_name, length, [reset_value=0], [mode="rw"])
         - ...
     """
 
@@ -28,20 +28,29 @@ class RtLinkCSR(Module):
         data_signals_list = []
         txt_output = "Address, Name, Length\n"
         for idx, r in enumerate(regs):
-            signal = Signal(bits_sign=r[1], name=r[0])
+            if len(r) > 2:
+                reset_value = r[2]
+            else:
+                reset_value = 0
+            if len(r) > 3:
+                mode = r[3]
+            else:
+                mode = "rw"
+            signal = Signal(bits_sign=r[1], name=r[0], reset=reset_value)
             setattr(self, r[0], signal)
             data_signals_list.append(signal)
-            ld_signal_name = r[0] + "_ld"
-            setattr(self, ld_signal_name, Signal(bits_sign=1, name=ld_signal_name))
-            ld_signal = getattr(self, ld_signal_name)
-            txt_output += "{}, {}, {}\n".format(idx, *r)
+            txt_output += "{}, {}, {}\n".format(idx, *(r[:2]))
 
-            self.sync.rio_phy += [
-                ld_signal.eq(0),
-                If(self.rtlink.o.stb & write_enable & (address == idx),
-                   signal.eq(self.rtlink.o.data),
-                   ld_signal.eq(1))
-            ]
+            if mode == "rw":
+                ld_signal_name = r[0] + "_ld"
+                setattr(self, ld_signal_name, Signal(bits_sign=1, name=ld_signal_name))
+                ld_signal = getattr(self, ld_signal_name)
+                self.sync.rio_phy += [
+                    ld_signal.eq(0),
+                    If(self.rtlink.o.stb & write_enable & (address == idx),
+                    signal.eq(self.rtlink.o.data),
+                    ld_signal.eq(1))
+                ]
 
         data_signals = Array(data_signals_list)
         self.sync.rio_phy += [
