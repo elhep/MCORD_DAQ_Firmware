@@ -23,8 +23,8 @@ class AdcDaq:
         self.core = dmgr.get(core_device)
         self.ref_period_mu = self.core.seconds_to_mu(
             self.core.coarse_ref_period)
-        self.pretrigger = 0
-        self.posttrigger = 0
+        self.pretrigger = 1024
+        self.posttrigger = 1024
         self.incomplete = False
         self.samples = []
 
@@ -39,7 +39,7 @@ class AdcDaq:
     @kernel
     def trigger(self):
         rtio_output((self.channel << 8) | 0, 0)  # data is not important, stb is used as a trigger
-        delay_mu(self.ref_period_mu)
+        # delay_mu(self.ref_period_mu)
 
     @rpc(flags={"async"})
     def store_sample(self, sample):
@@ -49,10 +49,12 @@ class AdcDaq:
     def get_samples(self):
         self.incomplete = False
         for _ in range(self.pretrigger+self.posttrigger):
-            timestamp, sample = rtio_input_timestamped_data(self.core.seconds_to_mu(100*us), self.channel)
+            timestamp, sample = rtio_input_timestamped_data(-1, self.channel)
+            # self.core.seconds_to_mu(10000*us)
             if timestamp >= 0:
                 self.store_sample(sample)
             else:
+                print(_)
                 raise ValueError("DAQ incomplete data")
 
     @kernel

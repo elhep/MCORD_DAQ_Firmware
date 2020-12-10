@@ -217,6 +217,7 @@ class FmcAdc100M10b16chaTdc(_FMC):
                 lclk_i=target.platform.request(cls.signal_name("adc_out_lclk", fmc), adc_id),
                 dat_i=[target.platform.request(cls.signal_name("adc_out_out{}".format(i), fmc), adc_id) for i in range(8)])
             target.platform.add_period_constraint(phy.cd_adclk_clkdiv.clk, 10.)
+            target.platform.add_period_constraint(phy.lclk_bufio, 2.)
             phy_renamed_cd = ClockDomainsRenamer({"adclk_clkdiv": dclk_name})(phy)
             setattr(target.submodules, "fmc{}_adc{}_phy".format(fmc, adc_id), phy_renamed_cd)
             target.add_rtio_channels(
@@ -231,7 +232,7 @@ class FmcAdc100M10b16chaTdc(_FMC):
                     max_samples=adc_daq_samples))
                 setattr(target.submodules, "fmc{}_adc{}_daq{}".format(fmc, adc_id, channel), daq)
                 target.add_rtio_channels(
-                    rtio.Channel.from_phy(daq),
+                    rtio.Channel.from_phy(daq, ififo_depth=adc_daq_samples),
                     "fmc{}_adc{}_daq{} (AdcPhyDaq)".format(fmc, adc_id, channel))
 
         # TDC

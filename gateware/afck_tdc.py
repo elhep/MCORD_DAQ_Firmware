@@ -14,13 +14,13 @@ class AfckTdc(StandaloneBase):
         FmcAdc100M10b16chaTdc.add_std(self, 1, iostd_single, iostd_diff, with_trig=True)
         #FmcAdc100M10b16chaTdc.add_std(self, 2, iostd_single, iostd_diff, with_trig=False)
 
-        self.platform.toolchain.postsynthesis_commands.append("source /workspace/gateware/debug/insert_ila.tcl")
-        self.platform.toolchain.postsynthesis_commands.append(
-            "batch_insert_ila {4096}")
-        self.crg.cd_sys.clk.attr.add(("mark_dbg_hub_clk", "true"))
-        self.crg.cd_sys.clk.attr.add(("keep", "true"))
-        self.platform.toolchain.postsynthesis_commands.append(
-            "connect_debug_port dbg_hub/clk [get_nets -hierarchical -filter {mark_dbg_hub_clk == true}]")
+        # self.platform.toolchain.postsynthesis_commands.append("source /workspace/gateware/debug/insert_ila.tcl")
+        # self.platform.toolchain.postsynthesis_commands.append(
+        #     "batch_insert_ila {512}")
+        # self.crg.cd_sys.clk.attr.add(("mark_dbg_hub_clk", "true"))
+        # self.crg.cd_sys.clk.attr.add(("keep", "true"))
+        # self.platform.toolchain.postsynthesis_commands.append(
+        #     "connect_debug_port dbg_hub/clk [get_nets -hierarchical -filter {mark_dbg_hub_clk == true}]")
 
 
 def main():

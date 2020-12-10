@@ -63,7 +63,7 @@ class FmcAdc100M10bTdc16cha:
                             spi_device=self.tdc_spi,
                             chip_select=self.clock_csn,
                             spi_freq=500_000,
-                            config=AD9528_DEBUG_CONFIG,
+                            config=AD9528_DEFAULT_CONFIG,# AD9528_DEBUG_CONFIG, #AD9528_DEFAULT_CONFIG, #,
                             core_device=core_device)
 
     @kernel

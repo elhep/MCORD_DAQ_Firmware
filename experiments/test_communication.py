@@ -20,16 +20,15 @@ class TestComm(EnvExperiment):
         else:
             self.fmc1.adc[adc].enable_test_pattern(pattern)
 
-
     @kernel
     def test_daq(self, adc=0, daq=0):
         self.core.break_realtime()
-        self.fmc1.adc[adc].enable_test_pattern(0x1)
+        self.fmc1.adc[adc].enable_ramp_test_pattern()
         self.fmc1.adc[adc].daq[daq].clear_fifo()
-        self.fmc1.adc[adc].daq[daq].configure(20, 20)
+        self.fmc1.adc[adc].daq[daq].configure(32, 32)
         delay(100 * us)
         self.fmc1.adc[adc].daq[daq].trigger()
-        delay(100 * us)
+        delay(10000 * us)
         self.fmc1.adc[adc].daq[daq].get_samples()
 
     @kernel
@@ -62,24 +61,30 @@ class TestComm(EnvExperiment):
         self.fmc1.adc[0].phy.adclk_delay_value.write_rt(val)
         
     def run(self):
-        self.initialize()
+        # self.initialize()
         self.get_frequency(self.fmc1, "clk0")
         self.get_frequency(self.fmc1, "clk1")
         self.get_frequency(self.fmc1, "adc0_lclk")
         self.get_frequency(self.fmc1, "adc1_lclk")
         
-        for i in range(10):
-            # self.debug_adc_interface(1 << i, adc=1)
-            self.debug_adc_interface(-1, adc=1)
 
-            input(f"{i} [ENTER]")
+
+        # for i in range(10):
+        #     # self.debug_adc_interface(1 << i, adc=1)
+        #     self.debug_adc_interface(-1, adc=0)
+        #     self.debug_adc_interface(-1, adc=1)
+
+        #     input(f"{i} [ENTER]")
 
         # for i in range(32):
         #     self.set_delay(i)
         #     input(f"{i} [ENTER]")
 
 
-        # self.test_daq(adc=1)
+        self.test_daq(adc=0)
+
+        for s in self.fmc1.adc[0].daq[0].samples:
+            print(bin(s)[2:].zfill(10), hex(s), s)
         
 
 

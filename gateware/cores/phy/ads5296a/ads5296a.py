@@ -74,7 +74,7 @@ class ADS5296A_XS7(Module):
         lclk_ibuf = Signal()
         lclk_bufg = Signal()
         self.lclk = lclk_bufg
-        lclk_bufio = Signal()
+        self.lclk_bufio = lclk_bufio = Signal()
 
         self.clock_domains.cd_adclk_clkdiv = cd_div4 = ClockDomain()
         self.specials += [AsyncResetSynchronizer(cd_div4, ResetSignal("sys"))]
@@ -134,7 +134,7 @@ class ADS5296A_XS7(Module):
                                       i_CLKB=~lclk_bufio,
                                       i_CE1=1,
                                       i_RST=ResetSignal("adclk_clkdiv"),
-                                      i_CLKDIV=ClockSignal("adclk_clkdiv"),
+                                      i_CLKDIV=lclk_bufg,
                                       i_CLKDIVP=0,
                                       i_BITSLIP=bitslip,
                                       i_DYNCLKDIVSEL=0,
@@ -153,7 +153,7 @@ class ADS5296A_XS7(Module):
                                       i_CLKB=~lclk_bufio,
                                       i_CE1=1,
                                       i_RST=ResetSignal("adclk_clkdiv"),
-                                      i_CLKDIV=ClockSignal("adclk_clkdiv"),
+                                      i_CLKDIV=lclk_bufg,
                                       i_CLKDIVP=0,
                                       i_BITSLIP=bitslip,
                                       i_DYNCLKDIVSEL=0,

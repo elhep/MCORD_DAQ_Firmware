@@ -22,6 +22,8 @@ class AdcPhyDaq(Module):
         # --------------------------------------------------------------------------------------------------------------
         # Sample memory
 
+        assert max_samples <= 2**12-1
+
         memory = Memory(len(data), max_samples, init=[0]*max_samples)
         memory_write_port = memory.get_port(write_capable=True, clock_domain="dclk")
         memory_read_port = memory.get_port(has_re=True, clock_domain="rio_phy")
@@ -32,8 +34,8 @@ class AdcPhyDaq(Module):
 
         trigger_dclk = Signal()
         trigger_dclk.attr.add(("mark_debug", "true"))
-        pretrigger_len_dclk = Signal(max=max_samples, reset=16)
-        posttrigger_len_dclk = Signal(max=max_samples, reset=16)
+        pretrigger_len_dclk = Signal(12, reset=16)
+        posttrigger_len_dclk = Signal(12, reset=16)
 
         current_address_dclk = Signal.like(memory_write_port.adr, reset=0)
         current_address_dclk.attr.add(("mark_debug", "true"))
@@ -101,6 +103,20 @@ class AdcPhyDaq(Module):
         self.rtlink = rtlink.Interface(
             rtlink.OInterface(data_width=24, address_width=2),  # address_width = width + 1
             rtlink.IInterface(data_width=10, timestamped=True))
+
+        self.rtlink.o.stb.attr.add(("mark_debug", "true"))
+        self.rtlink.o.address.attr.add(("mark_debug", "true"))
+        self.rtlink.o.data.attr.add(("mark_debug", "true"))
+        self.rtlink.i.data.attr.add(("mark_debug", "true"))
+        self.rtlink.i.stb.attr.add(("mark_debug", "true"))
+
+        memory_read_port.adr.attr.add(("mark_debug", "true"))
+        memory_read_port.dat_r.attr.add(("mark_debug", "true"))
+        memory_read_port.re.attr.add(("mark_debug", "true"))
+
+        memory_write_port.adr.attr.add(("mark_debug", "true"))
+        memory_write_port.dat_w.attr.add(("mark_debug", "true"))
+        memory_write_port.we.attr.add(("mark_debug", "true"))
 
         trigger_rio_phy = Signal()
         trigger_rio_phy.attr.add(("mark_debug", "true"))
