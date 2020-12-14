@@ -13,6 +13,10 @@ class TestComm(EnvExperiment):
         self.setattr_device("fmc1")
         self.fmc1 = self.get_device("fmc1")  # type: FmcAdc100M10bTdc16cha
         self.adc = 0
+        self.setattr_argument("pretrigger", NumberValue(100, ndecimals=0, min=0, max=100))
+        self.setattr_argument("posttrigger", NumberValue(100, ndecimals=0, min=0, max=100))
+        self.pretrigger = int(self.pretrigger)
+        self.posttrigger = int(self.posttrigger)
 
     @kernel
     def initialize(self):
@@ -25,7 +29,7 @@ class TestComm(EnvExperiment):
         # self.fmc1.adc[adc].enable_ramp_test_pattern()
         for i in range(8):
             self.fmc1.adc[adc].daq[i].clear_fifo()
-            self.fmc1.adc[adc].daq[i].configure(100 , 100)
+            self.fmc1.adc[adc].daq[i].configure(self.pretrigger , self.posttrigger)
 
     @kernel
     def trigger(self, adc):
