@@ -176,6 +176,8 @@ class ADS5296A:
     @kernel
     def initialize(self):
         self.core.break_realtime()
+        self.phy.phy_reset.write_rt(1)
+        delay(5*ms)
         self.test_spi()
         # self.write(0x1C, 1 << 14 | (0x3e0))
         self.write(0x46, 0x8100 | (1<<3))

@@ -22,7 +22,7 @@ class TestComm(EnvExperiment):
     @kernel
     def setup(self, adc):
         self.core.break_realtime()
-        self.fmc1.adc[adc].enable_ramp_test_pattern()
+        # self.fmc1.adc[adc].enable_ramp_test_pattern()
         for i in range(8):
             self.fmc1.adc[adc].daq[i].clear_fifo()
             self.fmc1.adc[adc].daq[i].configure(100 , 100)
@@ -40,7 +40,7 @@ class TestComm(EnvExperiment):
             self.fmc1.adc[adc].daq[i].get_samples()
 
     def run(self):
-        # self.initialize()
+        self.initialize()
         self.setup(self.adc)
         self.trigger(self.adc)
         self.get_samples(self.adc)
