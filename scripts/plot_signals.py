@@ -18,5 +18,6 @@ for ch in range(8):
     xticks = [1/fs*i for i in range(len(samples))]
     axes[ch // 4, ch % 4].plot(xticks, samples)
     axes[ch // 4, ch % 4].set_title(f"Channel {ch}")
+    axes[ch // 4, ch % 4].set_ylim(0, 1024)
 plt.show()
 

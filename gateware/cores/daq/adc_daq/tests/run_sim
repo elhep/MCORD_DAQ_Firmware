@@ -1,0 +1,8 @@
+(cd ../../../../../; dartiq run "python gateware/cores/daq/adc_daq/adc_phy_daq.py")
+
+mkdir -p ./sim_build
+
+mv ../../../../../adc_phy_daq.v ./adc_phy_daq.v
+mv ../../../../../memory.init ./memory.init
+
+make

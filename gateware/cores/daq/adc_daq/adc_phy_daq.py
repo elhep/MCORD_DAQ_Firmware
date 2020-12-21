@@ -8,16 +8,95 @@ from migen.genlib.cdc import BusSynchronizer, PulseSynchronizer
 from migen.fhdl import verilog
 from artiq.gateware.rtio import rtlink
 
+from functools import reduce
+from operator import and_
+
+
+class TriggerGenerator(Module):
+
+    def __init__(self, data, trigger_level_rio_phy, treshold_length=4):
+
+        # Outputs
+
+        self.trigger_re = Signal()  # CD: rio_phy
+        self.trigger_fe = Signal()  # CD: rio_phy
+
+        # # #
+
+        trigger_level_dclk = Signal.like(data)
+        trigger_level_cdc = BusSynchronizer(len(data), idomain="rio_phy", odomain="sys")
+        self.submodules += trigger_level_cdc
+        self.comb += [
+            trigger_level_cdc.i.eq(trigger_level_rio_phy),
+            trigger_level_dclk.eq(trigger_level_cdc.o)
+        ]
+
+        data_prev_dclk = Signal(len(data)*treshold_length)
+
+        above_comparison_list = [data_prev_dclk[i*len(data):(i+1)*len(data)] >= trigger_level_dclk for i in range(treshold_length)]
+        below_comparison_list = [data_prev_dclk[i*len(data):(i+1)*len(data)] <= trigger_level_dclk for i in range(treshold_length)]
+        data_above = Signal()
+        data_below = Signal()
+
+        self.comb += [
+            data_above.eq(reduce(and_, above_comparison_list)),
+            data_below.eq(reduce(and_, below_comparison_list))
+        ]
+
+        above_prev_dclk = Signal()
+        below_prev_dclk = Signal()
+
+        trigger_re_dclk = Signal()
+        trigger_fe_dclk = Signal()
+
+        self.sync.dclk += [
+            data_prev_dclk.eq((data_prev_dclk << len(data)) | data),
+
+            If(data_above & ~above_prev_dclk, trigger_re_dclk.eq(1)).Else(trigger_re_dclk.eq(0)),
+            If(data_below & ~below_prev_dclk, trigger_fe_dclk.eq(1)).Else(trigger_fe_dclk.eq(0)),
+            
+            above_prev_dclk.eq(data_above),
+            below_prev_dclk.eq(data_below)
+        ]
+
+        trigger_re_cdc = PulseSynchronizer(idomain="dclk", odomain="rio_phy")
+        self.submodules += trigger_re_cdc
+        self.comb += [
+            trigger_re_cdc.i.eq(trigger_re_dclk),
+            self.trigger_re.eq(trigger_re_cdc.o),
+        ]
+
+        trigger_fe_cdc = PulseSynchronizer(idomain="dclk", odomain="rio_phy")
+        self.submodules += trigger_fe_cdc
+        self.comb += [
+            trigger_fe_cdc.i.eq(trigger_fe_dclk),
+            self.trigger_fe.eq(trigger_fe_cdc.o),
+        ]
+
 
 class AdcPhyDaq(Module):
+    """Data Acquisition Module
 
-    def __init__(self, data_clk, data, max_samples):
+    :param data_clk: [CD: dclk] data clock signal
+    :param data: [CD: dclk] data bus signal
+    :param trigger_ext: [CD: rio_phy] external trigger signal
+    :param max_samples: maximum length of acquisition (pretrigger+posttrigger)
+    :param treshold_length: number of samples that need to be above/below trigger level
+                            for the trigger to fire
 
-        """
-        Output:
-          0: trigger
-          1: pretrigger[23:12], posttrigger[11:0]
-        """
+    **CAUTION:** `max_samples` defines length of internal buffer, you must set 
+    RTIO channel's `ififo_depth` to at least the same value to be able to transfer
+    all samples.
+    """
+
+    def __init__(self, data_clk, data, trigger_ext=None, max_samples=1024, treshold_length=4):
+        
+        # Outputs
+
+        self.trigger_re = Signal()  # CD: rio_phy
+        self.trigger_fe = Signal()  # CD: rio_phy
+
+        # # #
 
         # --------------------------------------------------------------------------------------------------------------
         # Sample memory
@@ -30,38 +109,30 @@ class AdcPhyDaq(Module):
         self.specials += [ memory, memory_write_port, memory_read_port ]
 
         # --------------------------------------------------------------------------------------------------------------
-        # Data clock domain
+        # Acquisition control
 
         trigger_dclk = Signal()
-        trigger_dclk.attr.add(("mark_debug", "true"))
+
         pretrigger_len_dclk = Signal(12, reset=16)
         posttrigger_len_dclk = Signal(12, reset=16)
-
         current_address_dclk = Signal.like(memory_write_port.adr, reset=0)
-        current_address_dclk.attr.add(("mark_debug", "true"))
         data_start_address_dclk = Signal.like(current_address_dclk)
         data_start_address_reg_dclk = Signal.like(data_start_address_dclk)
-        trig_prev_dclk = Signal()
-        trig_re_dclk = Signal()
         posttrigger_counter_dclk = Signal(max=max_samples)
         transfer_en_dclk = Signal()
         transfer_done_dclk = Signal()
-
+        
         self.sync.dclk += [
             # We need to wrap current_address when buffer_depth is reached
             If(current_address_dclk == max_samples-1,
-               current_address_dclk.eq(0))
-            .Else(
+               current_address_dclk.eq(0)).
+            Else(
                current_address_dclk.eq(current_address_dclk+1)),
-
-            # We'll be using rising edge of trig, previous value is needed
-            trig_prev_dclk.eq(trigger_dclk)
         ]
 
         self.comb += [
             memory_write_port.adr.eq(current_address_dclk),
             memory_write_port.dat_w.eq(data),
-            trig_re_dclk.eq(trigger_dclk & ~trig_prev_dclk),
             # Compute start address for further readout
             If(current_address_dclk < pretrigger_len_dclk,
                 data_start_address_dclk.eq(max_samples + current_address_dclk - pretrigger_len_dclk)).
@@ -70,10 +141,13 @@ class AdcPhyDaq(Module):
         ]
 
         # Data clock side FSM
+
         fsm_dclk = ClockDomainsRenamer("dclk")(FSM("PRETRIGGER"))
+        self.submodules.fsm_dclk = fsm_dclk
+
         fsm_dclk.act("PRETRIGGER",
                 memory_write_port.we.eq(1),
-                If(trig_re_dclk,
+                If(trigger_dclk,
                    NextValue(data_start_address_reg_dclk, data_start_address_dclk),
                    If(posttrigger_len_dclk != 0,
                        NextValue(posttrigger_counter_dclk, posttrigger_len_dclk),
@@ -95,44 +169,51 @@ class AdcPhyDaq(Module):
                 If(transfer_done_dclk,
                    NextState("PRETRIGGER"))
                 )
-        self.submodules.fsm_dclk = fsm_dclk
         
         # --------------------------------------------------------------------------------------------------------------
-        # RIO Clock Domain
+        # RTLink support
+
+        # Address map:
+        #  0: direct trigger [0]
+        #  1: pretrigger[23:12], posttrigger[11:0]
+        #  2: trigger_level [9:0]
 
         self.rtlink = rtlink.Interface(
-            rtlink.OInterface(data_width=24, address_width=2),  # address_width = width + 1
+            rtlink.OInterface(data_width=24, address_width=3),
             rtlink.IInterface(data_width=10, timestamped=True))
 
-        self.rtlink.o.stb.attr.add(("mark_debug", "true"))
-        self.rtlink.o.address.attr.add(("mark_debug", "true"))
-        self.rtlink.o.data.attr.add(("mark_debug", "true"))
-        self.rtlink.i.data.attr.add(("mark_debug", "true"))
-        self.rtlink.i.stb.attr.add(("mark_debug", "true"))
-
-        memory_read_port.adr.attr.add(("mark_debug", "true"))
-        memory_read_port.dat_r.attr.add(("mark_debug", "true"))
-        memory_read_port.re.attr.add(("mark_debug", "true"))
-
-        memory_write_port.adr.attr.add(("mark_debug", "true"))
-        memory_write_port.dat_w.attr.add(("mark_debug", "true"))
-        memory_write_port.we.attr.add(("mark_debug", "true"))
-
-        trigger_rio_phy = Signal()
-        trigger_rio_phy.attr.add(("mark_debug", "true"))
+        trigger_combined_rio_phy = Signal()
+        trigger_rtlink_rio_phy = Signal()
+        trigger_level_rio_phy = Signal.like(data)
         pretrigger_len_rio_phy = Signal.like(pretrigger_len_dclk)
         posttrigger_len_rio_phy = Signal.like(posttrigger_counter_dclk)
         transfer_done_rio_phy = Signal()
-        transfer_done_rio_phy.attr.add(("mark_debug", "true"))
-
         data_start_address_reg_rio_phy = Signal.like(data_start_address_reg_dclk)
         transfer_en_rio_phy = Signal()
-        transfer_en_rio_phy.attr.add(("mark_debug", "true"))
-
         counter_rio_phy = Signal.like(memory_read_port.adr)
 
-        # Rio clock side FSM
+        self.sync.rio_phy += [
+            trigger_rtlink_rio_phy.eq(0),
+            If(self.rtlink.o.stb,
+               If(self.rtlink.o.address == 0, trigger_rtlink_rio_phy.eq(1)),
+               If(self.rtlink.o.address == 1, Cat(pretrigger_len_rio_phy, posttrigger_len_rio_phy).eq(self.rtlink.o.data[0:24])),
+               If(self.rtlink.o.address == 2, trigger_level_rio_phy.eq(self.rtlink.o.data[0:len(data)]))
+            )
+        ]
+
+        self.comb += self.rtlink.i.data.eq(memory_read_port.dat_r)
+
+        if trigger_ext is not None:
+            self.comb += trigger_combined_rio_phy.eq(trigger_rtlink_rio_phy | trigger_ext)
+        else:
+            self.comb += trigger_combined_rio_phy.eq(trigger_rtlink_rio_phy)
+
+        # --------------------------------------------------------------------------------------------------------------
+        # Sample transfer to RTLink
+
         fsm_rio_phy = ClockDomainsRenamer("rio_phy")(FSM("IDLE"))
+        self.submodules.fsm_rio_phy = fsm_rio_phy
+
         fsm_rio_phy.act("IDLE",
                 memory_read_port.re.eq(0),
                 NextValue(transfer_done_rio_phy, 0),
@@ -153,18 +234,15 @@ class AdcPhyDaq(Module):
                    NextState("IDLE"),
                    NextValue(transfer_done_rio_phy, 1))
                 )
-        self.submodules.fsm_rio_phy = fsm_rio_phy
 
-        self.sync.rio_phy += [
-            trigger_rio_phy.eq(0),
-            If(self.rtlink.o.stb,
-               If(self.rtlink.o.address == 0, trigger_rio_phy.eq(1)),
-               If(self.rtlink.o.address == 1, Cat(pretrigger_len_rio_phy, posttrigger_len_rio_phy).eq(self.rtlink.o.data[0:24]))
-            )
-        ]
+        # --------------------------------------------------------------------------------------------------------------
+        # Trigger generator
 
+        trigger_generator = ClockDomainsRenamer("dclk")(TriggerGenerator(data, trigger_level_rio_phy, treshold_length))
+        self.submodules += trigger_generator
         self.comb += [
-            self.rtlink.i.data.eq(memory_read_port.dat_r)
+            self.trigger_re.eq(trigger_generator.trigger_re),
+            self.trigger_fe.eq(trigger_generator.trigger_fe)
         ]
 
         # --------------------------------------------------------------------------------------------------------------
@@ -190,7 +268,7 @@ class AdcPhyDaq(Module):
         cdc_trigger_rio_phy_dclk = PulseSynchronizer(idomain="rio_phy", odomain="dclk")
         self.submodules.cdc_trigger_rio_phy_dclk = cdc_trigger_rio_phy_dclk
         self.comb += [
-            cdc_trigger_rio_phy_dclk.i.eq(trigger_rio_phy),
+            cdc_trigger_rio_phy_dclk.i.eq(trigger_combined_rio_phy),
             trigger_dclk.eq(cdc_trigger_rio_phy_dclk.o)
         ]
         cdc_transfer_done_rio_phy_dclk = PulseSynchronizer(idomain="rio_phy", odomain="dclk")
@@ -200,6 +278,30 @@ class AdcPhyDaq(Module):
             transfer_done_dclk.eq(cdc_transfer_done_rio_phy_dclk.o)
         ]
 
+        # Debug signals
+
+        trigger_dclk.attr.add(("mark_debug", "true"))
+        trigger_combined_rio_phy.attr.add(("mark_debug", "true"))
+        current_address_dclk.attr.add(("mark_debug", "true"))
+        transfer_en_rio_phy.attr.add(("mark_debug", "true"))
+
+        trigger_rtlink_rio_phy.attr.add(("mark_debug", "true"))
+        transfer_done_rio_phy.attr.add(("mark_debug", "true"))
+
+        self.rtlink.o.stb.attr.add(("mark_debug", "true"))
+        self.rtlink.o.address.attr.add(("mark_debug", "true"))
+        self.rtlink.o.data.attr.add(("mark_debug", "true"))
+        self.rtlink.i.data.attr.add(("mark_debug", "true"))
+        self.rtlink.i.stb.attr.add(("mark_debug", "true"))
+
+        memory_read_port.adr.attr.add(("mark_debug", "true"))
+        memory_read_port.dat_r.attr.add(("mark_debug", "true"))
+        memory_read_port.re.attr.add(("mark_debug", "true"))
+
+        memory_write_port.adr.attr.add(("mark_debug", "true"))
+        memory_write_port.dat_w.attr.add(("mark_debug", "true"))
+        memory_write_port.we.attr.add(("mark_debug", "true"))
+
 
 class SimulationWrapper(Module):
 
@@ -208,17 +310,22 @@ class SimulationWrapper(Module):
         self.data_clk = Signal()
         self.data = Signal(10)
 
+        trigger_ext = Signal()
+
         self.clock_domains.cd_rio_phy = cd_rio_phy = ClockDomain()
         self.clock_domains.cd_dclk = cd_dclk = ClockDomain()
 
         self.comb += [cd_dclk.clk.eq(self.data_clk)]
 
-        self.submodules.dut = dut = AdcPhyDaq(self.data_clk, self.data, 2048)
+        self.submodules.dut = dut = AdcPhyDaq(self.data_clk, self.data,  2048)
 
         self.io = {
             cd_dclk.rst,
             self.data_clk,
             self.data,
+            trigger_ext,
+            dut.trigger_fe,
+            dut.trigger_re,
             cd_rio_phy.clk,
             cd_rio_phy.rst,
             dut.rtlink.i.stb,
@@ -228,18 +335,19 @@ class SimulationWrapper(Module):
             dut.rtlink.o.data
         }
 
+
 if __name__ == "__main__":
 
     from migen.build.xilinx import common
     from gateware.simulation.common import update_tb
 
     module = SimulationWrapper()
-    so = dict(common.xilinx_special_overrides)
-    so.update(common.xilinx_s7_special_overrides)
+    # so = dict(common.xilinx_special_overrides)
+    # so.update(common.xilinx_s7_special_overrides)
 
     verilog.convert(fi=module,
                     name="top",
-                    special_overrides=so,
+                    # special_overrides=so,
                     ios=module.io,
                     create_clock_domains=False).write("adc_phy_daq.v")
     update_tb("adc_phy_daq.v")

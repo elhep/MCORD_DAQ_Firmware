@@ -43,11 +43,7 @@ class FmcAdc100M10bTdc16cha:
             TDCGPX2(dmgr, self.channel + 31 + i*12, self.tdc_spi, self.tdc_csn[i], core_device=core_device, spi_freq=1_000_000) for i in range(4)
         ]
 
-        if with_trig:
-            self.trig = TTLInOut(dmgr, channel + 88, core_device)
-            freq_counter_channel_offset = channel + 89
-        else:
-            freq_counter_channel_offset = channel + 88
+        freq_counter_channel_offset = channel + 88
         
         self.clk0_ttl = TTLInOut(dmgr, freq_counter_channel_offset+0, core_device)
         self.clk0_edge_counter = EdgeCounter(dmgr, freq_counter_channel_offset+1, core_device=core_device)

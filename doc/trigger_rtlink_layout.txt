@@ -1,0 +1,58 @@
+Trigger matrix row 0 layout (bit number, LSB to MSB):
+ * 0 FMC1 external trigger rising edge
+ * 1 FMC1 external trigger falling edge
+ * 2 FMC1 ADC0 DAQ0 rising edge
+ * 3 FMC1 ADC0 DAQ0 falling edge
+ * 4 FMC1 ADC0 DAQ1 rising edge
+ * 5 FMC1 ADC0 DAQ1 falling edge
+ * 6 FMC1 ADC0 DAQ2 rising edge
+ * 7 FMC1 ADC0 DAQ2 falling edge
+ * 8 FMC1 ADC0 DAQ3 rising edge
+ * 9 FMC1 ADC0 DAQ3 falling edge
+ * 10 FMC1 ADC0 DAQ4 rising edge
+ * 11 FMC1 ADC0 DAQ4 falling edge
+ * 12 FMC1 ADC0 DAQ5 rising edge
+ * 13 FMC1 ADC0 DAQ5 falling edge
+ * 14 FMC1 ADC0 DAQ6 rising edge
+ * 15 FMC1 ADC0 DAQ6 falling edge
+ * 16 FMC1 ADC0 DAQ7 rising edge
+ * 17 FMC1 ADC0 DAQ7 falling edge
+ * 18 FMC1 ADC1 DAQ0 rising edge
+ * 19 FMC1 ADC1 DAQ0 falling edge
+ * 20 FMC1 ADC1 DAQ1 rising edge
+ * 21 FMC1 ADC1 DAQ1 falling edge
+ * 22 FMC1 ADC1 DAQ2 rising edge
+ * 23 FMC1 ADC1 DAQ2 falling edge
+ * 24 FMC1 ADC1 DAQ3 rising edge
+ * 25 FMC1 ADC1 DAQ3 falling edge
+ * 26 FMC1 ADC1 DAQ4 rising edge
+ * 27 FMC1 ADC1 DAQ4 falling edge
+ * 28 FMC1 ADC1 DAQ5 rising edge
+ * 29 FMC1 ADC1 DAQ5 falling edge
+ * 30 FMC1 ADC1 DAQ6 rising edge
+ * 31 FMC1 ADC1 DAQ6 falling edge
+Trigger matrix row 1 layout (bit number, LSB to MSB):
+ * 0 FMC1 ADC1 DAQ7 rising edge
+ * 1 FMC1 ADC1 DAQ7 falling edge
+ * 2 SW Trigger 0
+ * 3 SW Trigger 1
+ * 4 SW Trigger 2
+ * 5 SW Trigger 3
+
+Trigger channels:
+ * 0-1: FMC1 ADC0 DAQ0
+ * 2-3: FMC1 ADC0 DAQ1
+ * 4-5: FMC1 ADC0 DAQ2
+ * 6-7: FMC1 ADC0 DAQ3
+ * 8-9: FMC1 ADC0 DAQ4
+ * 10-11: FMC1 ADC0 DAQ5
+ * 12-13: FMC1 ADC0 DAQ6
+ * 14-15: FMC1 ADC0 DAQ7
+ * 16-17: FMC1 ADC1 DAQ0
+ * 18-19: FMC1 ADC1 DAQ1
+ * 20-21: FMC1 ADC1 DAQ2
+ * 22-23: FMC1 ADC1 DAQ3
+ * 24-25: FMC1 ADC1 DAQ4
+ * 26-27: FMC1 ADC1 DAQ5
+ * 28-29: FMC1 ADC1 DAQ6
+ * 30-31: FMC1 ADC1 DAQ7

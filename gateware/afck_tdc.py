@@ -6,12 +6,19 @@ from artiq.gateware.targets.afck1v1 import StandaloneBase, iostd_single, iostd_d
 from gateware.cores.fmc_adc100M_10B_tdc_16cha import FmcAdc100M10b16chaTdc
 from misoc.integration.builder import builder_args, builder_argdict
 from misoc.targets.afck1v1 import soc_afck1v1_argdict, soc_afck1v1_args
+from gateware.cores.daq.adc_daq.trigger_controller import TriggerController
 
 
 class AfckTdc(StandaloneBase):
 
     def add_design(self):
-        FmcAdc100M10b16chaTdc.add_std(self, 1, iostd_single, iostd_diff, with_trig=True)
+        trigger_controller = TriggerController
+
+        fmc1_trigger_generators, fmc1_trigger_channels = FmcAdc100M10b16chaTdc.add_std(self, 1, iostd_single, iostd_diff, with_trig=True)
+
+        trigger_controller = TriggerController(fmc1_trigger_generators, fmc1_trigger_channels, rtlink_triggers_no=4)
+        self.submodules += trigger_controller
+
         #FmcAdc100M10b16chaTdc.add_std(self, 2, iostd_single, iostd_diff, with_trig=False)
 
         # self.platform.toolchain.postsynthesis_commands.append("source /workspace/gateware/debug/insert_ila.tcl")

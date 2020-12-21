@@ -14,6 +14,7 @@ from gateware.cores.phy.tdcgpx2.tdcgpx2 import TdcGpx2Phy
 
 from gateware.cores.daq.adc_daq.adc_phy_daq import AdcPhyDaq
 from gateware.cores.daq.tdc_daq.tdcdaq import TdcDaq
+from gateware.cores.daq.adc_daq.trigger_controller import ExternalTriggerInput, TriggerController
 
 from gateware.cores.xilinx import *
 
@@ -162,7 +163,11 @@ class FmcAdc100M10b16chaTdc(_FMC):
 
     @classmethod
     def add_std(cls, target, fmc, iostd_single, iostd_diff, with_trig=False, adc_daq_samples=1024, tdc_daq_samples=1024):
+
         cls.add_extension(target, fmc, iostd_single, iostd_diff)
+
+        trigger_generators = []
+        trigger_inputs = []
 
         # dac_i2c = target.platform.request(cls.signal_name("dac_i2c", fmc))
         # target.submodules.i2c = gpio.GPIOTristate([dac_i2c.scl, dac_i2c.sda])
@@ -207,6 +212,14 @@ class FmcAdc100M10b16chaTdc(_FMC):
         target.submodules += phy
         target.add_rtio_channels(rtio.Channel.from_phy(phy), "fmc{}_adc_spi (SPIMaster)".format(fmc))
 
+        # External Trigger
+
+        if with_trig:
+            pads = target.platform.request(cls.signal_name("trig", fmc))
+            target.submodules.ext_trigger_input = ext_trigger_input = ExternalTriggerInput(pads.p, pads.n)
+            trigger_generators.append({"signal": ext_trigger_input.trigger_re, "label": f"FMC{fmc} external trigger rising edge"})
+            trigger_generators.append({"signal": ext_trigger_input.trigger_fe, "label": f"FMC{fmc} external trigger falling edge"})
+
         # ADC
 
         for adc_id in range(2):
@@ -228,15 +241,20 @@ class FmcAdc100M10b16chaTdc(_FMC):
                 "fmc{}_adc{} (ADS5296APhy)".format(fmc, adc_id)
             )
 
-            for channel in range(9):
+            for channel in range(8):
+                trigger = Signal()
                 daq = ClockDomainsRenamer({"dclk": dclk_name})(AdcPhyDaq(
                     data_clk=phy.data_clk_o,
                     data=phy.data_o[channel],
+                    trigger_ext=trigger,
                     max_samples=adc_daq_samples))
                 setattr(target.submodules, "fmc{}_adc{}_daq{}".format(fmc, adc_id, channel), daq)
                 target.add_rtio_channels(
                     rtio.Channel.from_phy(daq, ififo_depth=adc_daq_samples),
                     "fmc{}_adc{}_daq{} (AdcPhyDaq)".format(fmc, adc_id, channel))
+                trigger_generators.append({"signal": daq.trigger_re, "label": f"FMC{fmc} ADC{adc_id} DAQ{channel} rising edge"})
+                trigger_generators.append({"signal": daq.trigger_fe, "label": f"FMC{fmc} ADC{adc_id} DAQ{channel} falling edge"})
+                trigger_inputs.append({"signal": trigger, "label": f"FMC{fmc} ADC{adc_id} DAQ{channel}"})
 
         # TDC
 
@@ -272,13 +290,7 @@ class FmcAdc100M10b16chaTdc(_FMC):
         for i, pad in enumerate(csn_pads):
             phy = Output(pad)
             target.submodules += phy
-            target.add_rtio_channels(rtio.Channel.from_phy(phy), "fmc{}_csn{} (Output)".format(fmc, i))
-
-        if with_trig:
-            pads = target.platform.request(cls.signal_name("trig", fmc))
-            phy = ttl_serdes_7series.InOut_8X(pads.p, pads.n)
-            target.submodules += phy
-            target.add_rtio_channels(rtio.Channel.from_phy(phy, ififo_depth=64), "fmc{}_trig (InOut_8X)".format(fmc))
+            target.add_rtio_channels(rtio.Channel.from_phy(phy), "fmc{}_csn{} (Output)".format(fmc, i))       
 
         # Frequency counters
 
@@ -319,6 +331,8 @@ class FmcAdc100M10b16chaTdc(_FMC):
                 f"fmc{fmc}_adc{adc_id}_lclk_ttl_input",
                 f"fmc{fmc}_adc{adc_id}_lclk_edge_counter",
             ])
+
+        return trigger_generators, trigger_inputs
 
     
 

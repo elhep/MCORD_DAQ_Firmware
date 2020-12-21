@@ -64,6 +64,24 @@ class TbAdcPhyDac:
                 yield Timer(self.data_clk_period_ps / 2)
 
     @cocotb.coroutine
+    def sawtooth_generator(self):
+        self.dut.data_clk <= 0
+        yield Timer(self.data_clk_period_ps / 2)
+        while True:
+            for v in range(self.value_max):
+                self.dut.data <= v
+                self.dut.data_clk <= 1
+                yield Timer(self.data_clk_period_ps/2)
+                self.dut.data_clk <= 0
+                yield Timer(self.data_clk_period_ps / 2)
+            for v in reversed(range(self.value_max)):
+                self.dut.data <= v
+                self.dut.data_clk <= 1
+                yield Timer(self.data_clk_period_ps/2)
+                self.dut.data_clk <= 0
+                yield Timer(self.data_clk_period_ps / 2)
+
+    @cocotb.coroutine
     def reset(self):
         print("Starting reset... ", end='')
         self.dut.dclk_rst <= 1
@@ -81,7 +99,7 @@ class TbAdcPhyDac:
 
         while True:
             # Acqire pretrigger samples
-            while self.dut.trig_re_dclk != 1:
+            while self.dut.trigger_dclk != 1:
                 yield self.dclk_re
                 # This is basically a bad idea, but we don't expect to have A LOT of samples
                 pretrigger_samples = [*pretrigger_samples[1:], self.dut.data.value.binstr]
@@ -103,15 +121,21 @@ class TbAdcPhyDac:
         return data
 
     @cocotb.coroutine
-    def parametrized_daq_test(self, pretrigger, posttrigger, iterations=1, trigger_position_coroutine=None):
+    def trigger_test(self, level):
+        data_generator = cocotb.fork(self.sawtooth_generator())
+        yield self.write_to_rtio(0x2, level)
+        
+        yield Timer(100, 'us')
 
+    @cocotb.coroutine
+    def parametrized_daq_test(self, pretrigger, posttrigger, iterations=1, trigger_position_coroutine=None):
         data_generator = cocotb.fork(self.data_generator(randomized=True))
         yield self.reset()
 
-        print("Setting pre and post trigger lengths...")
-        yield self.write_to_rtio(0x1, posttrigger << 11 | pretrigger)
+        self.dut._log.info(f"Setting pre and post trigger lengths to {pretrigger} and {posttrigger}")
+        yield self.write_to_rtio(0x1, posttrigger << 12 | pretrigger)
 
-        print("Starting source data collector")
+        self.dut._log.info("Starting source data collector")
         source_data_collector_event = Event()
         source_data_collector_coroutine = cocotb.fork(self.source_data_collector(pretrigger, posttrigger, source_data_collector_event))
 
@@ -127,10 +151,10 @@ class TbAdcPhyDac:
             if trigger_position_coroutine:
                 yield trigger_position_coroutine
 
-            print("Triggering")
+            self.dut._log.info("Triggering")
             yield self.write_to_rtio(0x0, 0x0)
 
-            print("Waiting for source data...")
+            self.dut._log.info("Waiting for source data...")
             yield source_data_collector_event.wait()
             source_data = source_data_collector_event.data
             source_data_collector_event.clear()
@@ -138,18 +162,16 @@ class TbAdcPhyDac:
             source_posttrigger = source_data[1]
             readout = (yield readout_collector.join())
 
-            print(source_pretrigger)
-            print(source_posttrigger)
-            print(readout)
-
             if len(source_pretrigger) != pretrigger:
-                raise TestError("Invalid pretrigger data length")
+                raise TestError(f"Invalid pretrigger data length {len(source_pretrigger)} != {pretrigger}")
 
             if len(source_posttrigger) != posttrigger:
-                raise TestError("Invalid posttrigger data length")
+                raise TestError(f"Invalid posttrigger data length {len(source_posttrigger)} != {posttrigger}")
 
-            if (len(source_pretrigger) + len(source_posttrigger)) != len(readout):
-                raise TestError("Readout length is different than source data length")
+            expected_data_len = (len(source_pretrigger) + len(source_posttrigger))
+            self.dut._log.info(len(readout))
+            if expected_data_len != len(readout):
+                raise TestError(f"Readout length is different than source data length {expected_data_len} != {len(readout)}")
 
             for idx, (i, j) in enumerate(zip([*source_pretrigger, *source_posttrigger], readout)):
                 if i != j:
@@ -164,19 +186,14 @@ class TbAdcPhyDac:
         data_generator.kill()
 
 
-@cocotb.test(skip=True)
-def address_rollback_test(dut):
+@cocotb.test(skip=False)
+def trigger_generator_test(dut):
     tb = TbAdcPhyDac(dut, "10b")
-
-    @cocotb.coroutine
-    def rollback_finder(dut):
-        while dut.dut_memory_write_port_adr != 2030:
-            yield Edge(dut.dut_memory_write_port_adr)
-
-    yield tb.parametrized_daq_test(0xF, 0xF, trigger_position_coroutine=rollback_finder(dut))
+    yield tb.trigger_test(level=512)
 
 
-@cocotb.test()
+
+@cocotb.test(skip=True)
 def trigger_position_test(dut):
     tb = TbAdcPhyDac(dut, "10b")
 
@@ -194,12 +211,9 @@ def trigger_position_test(dut):
         [2000, 2]
     ]
 
-    for pretrigger, posttrigger in combinations:
-        print(pretrigger, posttrigger)
-        yield tb.parametrized_daq_test(pretrigger, posttrigger, iterations=20)
+    for pretrigger, posttrigger in combinations:       
+        yield tb.parametrized_daq_test(pretrigger, posttrigger, iterations=3)
 
-# @cocotb.test()
-# def consecutive_operations_test(dut):
 
 
 

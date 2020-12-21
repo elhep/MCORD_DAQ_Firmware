@@ -1,1 +1,2 @@
-python ./gateware/afck_tdc.py --integrated-rom-size 131072 --output ./build
+dartiq run "python ./gateware/afck_tdc.py --integrated-rom-size 131072 --output ./build $*"
+mv trigger_rtlink_layout.json ./coredevice/trigger_rtlink_layout.json
