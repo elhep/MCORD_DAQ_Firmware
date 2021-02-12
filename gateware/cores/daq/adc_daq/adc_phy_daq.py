@@ -1,7 +1,6 @@
 from migen.build.xilinx.platform import XilinxPlatform
 from migen.build.generic_platform import *
 
-
 from migen import *
 from migen.fhdl.specials import Memory
 from migen.genlib.cdc import BusSynchronizer, PulseSynchronizer
@@ -9,32 +8,78 @@ from migen.fhdl import verilog
 from artiq.gateware.rtio import rtlink
 
 from functools import reduce
-from operator import and_
+from operator import and_, add
+
+from math import cos, sin, pi
+from scipy import signal
+#import matplotlib.pyplot as plt
+
+
+# A synthesizable FIR filter.
+class FIR(Module):
+    def __init__(self, coef, wsize=16):
+        self.coef = coef
+        self.wsize = wsize
+        self.i = Signal((self.wsize, True))
+        self.o = Signal((self.wsize, True))
+
+        ###
+
+        muls = []
+        src = self.i
+        for c in self.coef:
+            sreg = Signal((self.wsize, True))
+            self.sync += sreg.eq(src)
+            src = sreg
+            c_fp = int(c * 2 ** (self.wsize - 1))
+            muls.append(c_fp * sreg)
+        sum_full = Signal((2 * self.wsize - 1, True))
+        self.sync += sum_full.eq(reduce(add, muls))
+        self.comb += self.o.eq(sum_full >> self.wsize - 1)
 
 
 class TriggerGenerator(Module):
 
     def __init__(self, data, trigger_level_rio_phy, treshold_length=4):
-
         # Outputs
 
         self.trigger_re = Signal()  # CD: rio_phy
         self.trigger_fe = Signal()  # CD: rio_phy
 
+        # Defines - values are way off....
+        fs = 100000000.0 # Sample
+        cutoff = 10000.0  # Desired cutoff frequency, Hz
+        trans_width = 10000  # Width of transition from pass band to stop band, Hz
+        numtaps = 30  # Size of the FIR filter.
+
+        # Compute filter coefficients with SciPy
+        coef = signal.remez(numtaps, [0, cutoff, cutoff + trans_width, 0.5 * fs], [1, 0], Hz=fs)
+
+        BaselineModule = FIR(coef, len(data))
+        self.submodules += BaselineModule
         # # #
 
         trigger_level_dclk = Signal.like(data)
+        trigger_level_offset_dclk = Signal.like(data)
         trigger_level_cdc = BusSynchronizer(len(data), idomain="rio_phy", odomain="sys")
         self.submodules += trigger_level_cdc
         self.comb += [
             trigger_level_cdc.i.eq(trigger_level_rio_phy),
-            trigger_level_dclk.eq(trigger_level_cdc.o)
+            trigger_level_dclk.eq(trigger_level_cdc.o),
+
+            BaselineModule.i.eq(trigger_level_cdc.o),
+            trigger_level_offset_dclk.eq(BaselineModule.o)
+
         ]
 
-        data_prev_dclk = Signal(len(data)*treshold_length)
+        data_prev_dclk = Signal(len(data) * treshold_length)
 
-        above_comparison_list = [data_prev_dclk[i*len(data):(i+1)*len(data)] >= trigger_level_dclk for i in range(treshold_length)]
-        below_comparison_list = [data_prev_dclk[i*len(data):(i+1)*len(data)] <= trigger_level_dclk for i in range(treshold_length)]
+        above_comparison_list = [
+            data_prev_dclk[i * len(data):(i + 1) * len(data)] >= trigger_level_dclk + trigger_level_offset_dclk for i in
+            range(treshold_length)]
+        below_comparison_list = [
+            data_prev_dclk[i * len(data):(i + 1) * len(data)] <= trigger_level_dclk + trigger_level_offset_dclk for i in
+            range(treshold_length)]
         data_above = Signal()
         data_below = Signal()
 
@@ -54,7 +99,7 @@ class TriggerGenerator(Module):
 
             If(data_above & ~above_prev_dclk, trigger_re_dclk.eq(1)).Else(trigger_re_dclk.eq(0)),
             If(data_below & ~below_prev_dclk, trigger_fe_dclk.eq(1)).Else(trigger_fe_dclk.eq(0)),
-            
+
             above_prev_dclk.eq(data_above),
             below_prev_dclk.eq(data_below)
         ]
@@ -90,7 +135,7 @@ class AdcPhyDaq(Module):
     """
 
     def __init__(self, data_clk, data, trigger_ext=None, max_samples=1024, treshold_length=4):
-        
+
         # Outputs
 
         self.trigger_re = Signal()  # CD: rio_phy
@@ -101,12 +146,12 @@ class AdcPhyDaq(Module):
         # --------------------------------------------------------------------------------------------------------------
         # Sample memory
 
-        assert max_samples <= 2**12-1
+        assert max_samples <= 2 ** 12 - 1
 
-        memory = Memory(len(data), max_samples, init=[0]*max_samples)
+        memory = Memory(len(data), max_samples, init=[0] * max_samples)
         memory_write_port = memory.get_port(write_capable=True, clock_domain="dclk")
         memory_read_port = memory.get_port(has_re=True, clock_domain="rio_phy")
-        self.specials += [ memory, memory_write_port, memory_read_port ]
+        self.specials += [memory, memory_write_port, memory_read_port]
 
         # --------------------------------------------------------------------------------------------------------------
         # Acquisition control
@@ -121,13 +166,13 @@ class AdcPhyDaq(Module):
         posttrigger_counter_dclk = Signal(max=max_samples)
         transfer_en_dclk = Signal()
         transfer_done_dclk = Signal()
-        
+
         self.sync.dclk += [
             # We need to wrap current_address when buffer_depth is reached
-            If(current_address_dclk == max_samples-1,
+            If(current_address_dclk == max_samples - 1,
                current_address_dclk.eq(0)).
-            Else(
-               current_address_dclk.eq(current_address_dclk+1)),
+                Else(
+                current_address_dclk.eq(current_address_dclk + 1)),
         ]
 
         self.comb += [
@@ -135,8 +180,8 @@ class AdcPhyDaq(Module):
             memory_write_port.dat_w.eq(data),
             # Compute start address for further readout
             If(current_address_dclk < pretrigger_len_dclk,
-                data_start_address_dclk.eq(max_samples + current_address_dclk - pretrigger_len_dclk)).
-            Else(
+               data_start_address_dclk.eq(max_samples + current_address_dclk - pretrigger_len_dclk)).
+                Else(
                 data_start_address_dclk.eq(current_address_dclk - pretrigger_len_dclk)),
         ]
 
@@ -146,30 +191,30 @@ class AdcPhyDaq(Module):
         self.submodules.fsm_dclk = fsm_dclk
 
         fsm_dclk.act("PRETRIGGER",
-                memory_write_port.we.eq(1),
-                If(trigger_dclk,
-                   NextValue(data_start_address_reg_dclk, data_start_address_dclk),
-                   If(posttrigger_len_dclk != 0,
-                       NextValue(posttrigger_counter_dclk, posttrigger_len_dclk),
-                       NextState("POSTTRIGGER")).
-                   Else(
-                       NextState("TRANSFER"),
-                       NextValue(transfer_en_dclk, 1))
-                ))
+                     memory_write_port.we.eq(1),
+                     If(trigger_dclk,
+                        NextValue(data_start_address_reg_dclk, data_start_address_dclk),
+                        If(posttrigger_len_dclk != 0,
+                           NextValue(posttrigger_counter_dclk, posttrigger_len_dclk),
+                           NextState("POSTTRIGGER")).
+                        Else(
+                            NextState("TRANSFER"),
+                            NextValue(transfer_en_dclk, 1))
+                        ))
         fsm_dclk.act("POSTTRIGGER",
-                memory_write_port.we.eq(1),
-                NextValue(posttrigger_counter_dclk, posttrigger_counter_dclk-1),
-                If(posttrigger_counter_dclk == 0,
-                   NextState("TRANSFER"),
-                   NextValue(transfer_en_dclk, 1))
-                )
+                     memory_write_port.we.eq(1),
+                     NextValue(posttrigger_counter_dclk, posttrigger_counter_dclk - 1),
+                     If(posttrigger_counter_dclk == 0,
+                        NextState("TRANSFER"),
+                        NextValue(transfer_en_dclk, 1))
+                     )
         fsm_dclk.act("TRANSFER",
-                memory_write_port.we.eq(0),
-                NextValue(transfer_en_dclk, 0),
-                If(transfer_done_dclk,
-                   NextState("PRETRIGGER"))
-                )
-        
+                     memory_write_port.we.eq(0),
+                     NextValue(transfer_en_dclk, 0),
+                     If(transfer_done_dclk,
+                        NextState("PRETRIGGER"))
+                     )
+
         # --------------------------------------------------------------------------------------------------------------
         # RTLink support
 
@@ -196,9 +241,10 @@ class AdcPhyDaq(Module):
             trigger_rtlink_rio_phy.eq(0),
             If(self.rtlink.o.stb,
                If(self.rtlink.o.address == 0, trigger_rtlink_rio_phy.eq(1)),
-               If(self.rtlink.o.address == 1, Cat(pretrigger_len_rio_phy, posttrigger_len_rio_phy).eq(self.rtlink.o.data[0:24])),
+               If(self.rtlink.o.address == 1,
+                  Cat(pretrigger_len_rio_phy, posttrigger_len_rio_phy).eq(self.rtlink.o.data[0:24])),
                If(self.rtlink.o.address == 2, trigger_level_rio_phy.eq(self.rtlink.o.data[0:len(data)]))
-            )
+               )
         ]
 
         self.comb += self.rtlink.i.data.eq(memory_read_port.dat_r)
@@ -215,25 +261,25 @@ class AdcPhyDaq(Module):
         self.submodules.fsm_rio_phy = fsm_rio_phy
 
         fsm_rio_phy.act("IDLE",
-                memory_read_port.re.eq(0),
-                NextValue(transfer_done_rio_phy, 0),
-                NextValue(self.rtlink.i.stb, 0),
-                If(transfer_en_rio_phy,
-                   NextValue(memory_read_port.adr, data_start_address_reg_rio_phy),
-                   NextValue(counter_rio_phy, 0),
-                   NextState("TRANSFER"))
-                )
+                        memory_read_port.re.eq(0),
+                        NextValue(transfer_done_rio_phy, 0),
+                        NextValue(self.rtlink.i.stb, 0),
+                        If(transfer_en_rio_phy,
+                           NextValue(memory_read_port.adr, data_start_address_reg_rio_phy),
+                           NextValue(counter_rio_phy, 0),
+                           NextState("TRANSFER"))
+                        )
         fsm_rio_phy.act("TRANSFER",
-                memory_read_port.re.eq(1),
-                NextValue(counter_rio_phy, counter_rio_phy+1),
-                NextValue(self.rtlink.i.stb, 1),
-                If(memory_read_port.adr+1 >= max_samples,
-                   NextValue(memory_read_port.adr, 0))
-                .Else(NextValue(memory_read_port.adr, memory_read_port.adr+1)),
-                If(counter_rio_phy == (pretrigger_len_rio_phy + posttrigger_len_rio_phy - 1),
-                   NextState("IDLE"),
-                   NextValue(transfer_done_rio_phy, 1))
-                )
+                        memory_read_port.re.eq(1),
+                        NextValue(counter_rio_phy, counter_rio_phy + 1),
+                        NextValue(self.rtlink.i.stb, 1),
+                        If(memory_read_port.adr + 1 >= max_samples,
+                           NextValue(memory_read_port.adr, 0))
+                        .Else(NextValue(memory_read_port.adr, memory_read_port.adr + 1)),
+                        If(counter_rio_phy == (pretrigger_len_rio_phy + posttrigger_len_rio_phy - 1),
+                           NextState("IDLE"),
+                           NextValue(transfer_done_rio_phy, 1))
+                        )
 
         # --------------------------------------------------------------------------------------------------------------
         # Trigger generator
@@ -306,7 +352,6 @@ class AdcPhyDaq(Module):
 class SimulationWrapper(Module):
 
     def __init__(self):
-
         self.data_clk = Signal()
         self.data = Signal(10)
 
@@ -317,7 +362,7 @@ class SimulationWrapper(Module):
 
         self.comb += [cd_dclk.clk.eq(self.data_clk)]
 
-        self.submodules.dut = dut = AdcPhyDaq(self.data_clk, self.data,  2048)
+        self.submodules.dut = dut = AdcPhyDaq(self.data_clk, self.data, 2048)
 
         self.io = {
             cd_dclk.rst,
@@ -337,7 +382,6 @@ class SimulationWrapper(Module):
 
 
 if __name__ == "__main__":
-
     from migen.build.xilinx import common
     from gateware.simulation.common import update_tb
 
