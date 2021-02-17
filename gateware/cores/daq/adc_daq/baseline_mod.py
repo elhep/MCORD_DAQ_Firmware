@@ -38,7 +38,23 @@ class FIR(Module):
 
 
 class Baseline(Module):
-    def __init__
+    def __init__(self, data)
+    
+        self.o = Signal.like(data)
+        
+        # Defines - values are way off....
+        fs = 100000000.0 # Sample
+        cutoff = 10000.0  # Desired cutoff frequency, Hz
+        trans_width = 10000  # Width of transition from pass band to stop band, Hz
+        numtaps = 266  # Size of the FIR filter.
+
+        # Compute filter coefficients with SciPy
+        coef = signal.remez(numtaps, [0, cutoff, cutoff + trans_width, 0.5 * fs], [1, 0], Hz=fs)
+        
+        self.submodules += FIR(coef, len(data))
+        
+        
+        
 
 
 class SimulationWrapper(Module):
