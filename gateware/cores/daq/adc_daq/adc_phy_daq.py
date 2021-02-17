@@ -15,27 +15,6 @@ from scipy import signal
 #import matplotlib.pyplot as plt
 
 
-# A synthesizable FIR filter.
-class FIR(Module):
-    def __init__(self, coef, wsize=16):
-        self.coef = coef
-        self.wsize = wsize
-        self.i = Signal((self.wsize, True))
-        self.o = Signal((self.wsize, True))
-
-        ###
-
-        muls = []
-        src = self.i
-        for c in self.coef:
-            sreg = Signal((self.wsize, True))
-            self.sync += sreg.eq(src)
-            src = sreg
-            c_fp = int(c * 2 ** (self.wsize - 1))
-            muls.append(c_fp * sreg)
-        sum_full = Signal((2 * self.wsize - 1, True))
-        self.sync += sum_full.eq(reduce(add, muls))
-        self.comb += self.o.eq(sum_full >> self.wsize - 1)
 
 
 class TriggerGenerator(Module):
@@ -46,17 +25,8 @@ class TriggerGenerator(Module):
         self.trigger_re = Signal()  # CD: rio_phy
         self.trigger_fe = Signal()  # CD: rio_phy
 
-        # Defines - values are way off....
-        fs = 100000000.0 # Sample
-        cutoff = 10000.0  # Desired cutoff frequency, Hz
-        trans_width = 10000  # Width of transition from pass band to stop band, Hz
-        numtaps = 30  # Size of the FIR filter.
 
-        # Compute filter coefficients with SciPy
-        coef = signal.remez(numtaps, [0, cutoff, cutoff + trans_width, 0.5 * fs], [1, 0], Hz=fs)
-
-        BaselineModule = FIR(coef, len(data))
-        self.submodules += BaselineModule
+        self.submodules += Baseline(len(data))
         # # #
 
         trigger_level_dclk = Signal.like(data)
