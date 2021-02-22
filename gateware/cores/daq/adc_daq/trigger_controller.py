@@ -153,14 +153,14 @@ class TriggerController(Module):
 
         # Trigger computation
 
-        trigger_delay_generator_signals_cnt = Array(Signal(max=32) for _ in range(len(trigger_channel_signals)))
-        trigger_delay_generator_signals = Array(Signal() for _ in range(len(trigger_channel_signals)))
+        trigger_delay_generator_signals_cnt = Array(Signal(max=32) for _ in range(len(trigger_generator_signals)))
+        trigger_delay_generator_signals = Array(Signal() for _ in range(len(trigger_generator_signals)))
         # self.sync.dclk += [
         for i in range(len(trigger_generator_signals)):
-            self.sync.dclk += [
+            self.sync += [
                 If(trigger_generator_signals[i] == 1,
-                    trigger_delay_generator_signals_cnt[i].eq(signal_delay),
-                    trigger_delay_generator_signals[i].eq(1),
+                    trigger_delay_generator_signals_cnt[i].eq(23),
+                    trigger_delay_generator_signals[i].eq(1)
                 ).Else(
                     If(trigger_delay_generator_signals_cnt[i] > 0,
                        trigger_delay_generator_signals_cnt[i].eq(trigger_delay_generator_signals_cnt[i] - 1)
@@ -184,8 +184,8 @@ class SimulationWrapper(Module):
         self.clock_domains.cd_rio_phy = cd_rio_phy = ClockDomain()
         self.clock_domains.cd_dclk = cd_dclk = ClockDomain()
 
-        trig_gen_no = 2
-        trig_ch_no = 4
+        trig_gen_no = 80
+        trig_ch_no = 16
 
         trigger_generator_signals = [Signal(name=f"trig_gen_{i}") for i in range(trig_gen_no)]
         trigger_generator_labels = [f"TG{i}" for i in range(trig_gen_no)]
