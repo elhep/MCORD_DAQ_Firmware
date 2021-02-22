@@ -12,10 +12,8 @@ from operator import and_, add
 
 from math import cos, sin, pi
 from scipy import signal
-#import matplotlib.pyplot as plt
 
-
-
+from gateware.cores.daq.adc_daq.baseline import Baseline
 
 class TriggerGenerator(Module):
 
@@ -25,8 +23,8 @@ class TriggerGenerator(Module):
         self.trigger_re = Signal()  # CD: rio_phy
         self.trigger_fe = Signal()  # CD: rio_phy
 
-
-        self.submodules += Baseline(len(data))
+        BaselineModule = Baseline(len(data))
+        self.submodules += BaselineModule
         # # #
 
         trigger_level_dclk = Signal.like(data)

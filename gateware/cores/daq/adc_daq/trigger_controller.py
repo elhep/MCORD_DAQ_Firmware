@@ -5,7 +5,7 @@ from migen.genlib.io import DifferentialInput
 from migen.fhdl import verilog
 from artiq.gateware.rtio import rtlink
 from functools import reduce
-from operator import or_
+from operator import or_, and_
 import json
 
 
@@ -43,7 +43,7 @@ class ExternalTriggerInput(Module):
 
 class TriggerController(Module):
 
-    def __init__(self, trigger_generators, trigger_channels, rtlink_triggers_no=4):
+    def __init__(self, trigger_generators, trigger_channels, rtlink_triggers_no=4, signal_delay=23):
         
         # RTLink
 
@@ -64,7 +64,7 @@ class TriggerController(Module):
         rtlink_trigger_generator_signals = [Signal() for _ in range(rtlink_triggers_no)]
         rtlink_trigger_array = Array(rtlink_trigger_generator_signals)
 
-        trigger_generator_signals += rtlink_trigger_generator_signals
+        # trigger_generator_signals += rtlink_trigger_generator_signals
         trigger_generator_labels += [f"SW Trigger {i}" for i in range(rtlink_triggers_no)]
 
         trigger_channel_signals = [dsc["signal"] for dsc in trigger_channels]
@@ -153,8 +153,28 @@ class TriggerController(Module):
 
         # Trigger computation
 
+        trigger_delay_generator_signals_cnt = Array(Signal(max=32) for _ in range(len(trigger_channel_signals)))
+        trigger_delay_generator_signals = Array(Signal() for _ in range(len(trigger_channel_signals)))
+        # self.sync.dclk += [
+        for i in range(len(trigger_generator_signals)):
+            self.sync.dclk += [
+                If(trigger_generator_signals[i] == 1,
+                    trigger_delay_generator_signals_cnt[i].eq(signal_delay),
+                    trigger_delay_generator_signals[i].eq(1),
+                ).Else(
+                    If(trigger_delay_generator_signals_cnt[i] > 0,
+                       trigger_delay_generator_signals_cnt[i].eq(trigger_delay_generator_signals_cnt[i] - 1)
+                    ).Else(
+                        trigger_delay_generator_signals[i].eq(0)
+                    )
+                )
+            ]
+        # ]
         for trigger_channel, trigger_matrix_row in zip(trigger_channel_signals, trigger_matrix):
-            self.comb += trigger_channel.eq(reduce(or_, (Cat(trigger_generator_signals) & trigger_matrix_row)))
+
+            self.comb += trigger_channel.eq(
+                reduce(or_, Cat(rtlink_trigger_generator_signals)) | reduce(and_, (Cat(trigger_delay_generator_signals) & trigger_matrix_row))
+            )
 
 
 class SimulationWrapper(Module):
@@ -164,8 +184,8 @@ class SimulationWrapper(Module):
         self.clock_domains.cd_rio_phy = cd_rio_phy = ClockDomain()
         self.clock_domains.cd_dclk = cd_dclk = ClockDomain()
 
-        trig_gen_no = 80
-        trig_ch_no = 16
+        trig_gen_no = 2
+        trig_ch_no = 4
 
         trigger_generator_signals = [Signal(name=f"trig_gen_{i}") for i in range(trig_gen_no)]
         trigger_generator_labels = [f"TG{i}" for i in range(trig_gen_no)]
