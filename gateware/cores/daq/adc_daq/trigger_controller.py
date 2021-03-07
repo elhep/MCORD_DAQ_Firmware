@@ -155,11 +155,11 @@ class TriggerController(Module):
 
         trigger_delay_generator_signals_cnt = Array(Signal(max=32) for _ in range(len(trigger_generator_signals)))
         trigger_delay_generator_signals = Array(Signal() for _ in range(len(trigger_generator_signals)))
-        # self.sync.dclk += [
+
         for i in range(len(trigger_generator_signals)):
-            self.sync += [
+            self.sync.rio_phy += [
                 If(trigger_generator_signals[i] == 1,
-                    trigger_delay_generator_signals_cnt[i].eq(23),
+                    trigger_delay_generator_signals_cnt[i].eq(signal_delay),
                     trigger_delay_generator_signals[i].eq(1)
                 ).Else(
                     If(trigger_delay_generator_signals_cnt[i] > 0,
@@ -169,12 +169,28 @@ class TriggerController(Module):
                     )
                 )
             ]
-        # ]
-        for trigger_channel, trigger_matrix_row in zip(trigger_channel_signals, trigger_matrix):
 
-            self.comb += trigger_channel.eq(
-                reduce(or_, Cat(rtlink_trigger_generator_signals)) | reduce(and_, (Cat(trigger_delay_generator_signals) & trigger_matrix_row))
-            )
+        trigger_channel_reg_1 = Array(Signal() for _ in range(len(trigger_generator_signals)))
+        trigger_channel_reg_2 = Array(Signal() for _ in range(len(trigger_generator_signals)))
+        trigger_channel_out   = Array(Signal() for _ in range(len(trigger_generator_signals)))
+
+        for trigger_channel, trigger_matrix_row, reg1, reg2, out in zip(trigger_channel_signals,
+                                                                   trigger_matrix, trigger_channel_reg_1, trigger_channel_reg_2, trigger_channel_out):
+            self.comb += [
+                trigger_channel.eq(
+                    reduce(or_, Cat(rtlink_trigger_generator_signals)) | reduce(and_, (Cat(trigger_delay_generator_signals) & trigger_matrix_row))
+                ),
+                If(reg1 == reg2,
+                   out.eq(1)
+                   ).Else(
+                    out.eq(0)
+                )
+            ]
+            self.sync.rio_phy += [
+                reg1.eq(trigger_channel),
+                reg2.eq(~reg1),
+
+            ]
 
 
 class SimulationWrapper(Module):
@@ -184,13 +200,14 @@ class SimulationWrapper(Module):
         self.clock_domains.cd_rio_phy = cd_rio_phy = ClockDomain()
         self.clock_domains.cd_dclk = cd_dclk = ClockDomain()
 
-        trig_gen_no = 80
-        trig_ch_no = 16
+        trig_gen_no = 2
+        trig_ch_no = 2
 
         trigger_generator_signals = [Signal(name=f"trig_gen_{i}") for i in range(trig_gen_no)]
         trigger_generator_labels = [f"TG{i}" for i in range(trig_gen_no)]
+        print(trigger_generator_signals)
 
-        trigger_channel_signals = [Signal(name=f"trig_ch_{i}") for i in range(trig_ch_no)]
+        trigger_channel_signals = [Signal(name=f"trigger_channel_out{i}") for i in range(trig_ch_no)]
         trigger_channel_labels = [f"TI{i}" for i in range(trig_ch_no)]
 
         trigger_generators = [{"signal": s, "label": l} for s, l in zip(trigger_generator_signals, trigger_generator_labels)]
