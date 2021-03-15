@@ -1,0 +1,13 @@
+{
+    "image": "dartiq",
+    "python_modules": [
+        "modules/artiq",
+        "modules/misoc",
+        "modules/migen",
+        "modules/ELHEP_Cores",
+        "modules/liteiclink"
+    ],
+    "copy_env_var": [
+        "XILINXD_LICENSE_FILE"
+    ]
+}
