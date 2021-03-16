@@ -2,7 +2,6 @@ import argparse
 
 from migen import *
 from artiq.build_soc import build_artiq_soc
-from artiq.gateware.targets.afck1v1 import StandaloneBase, iostd_single, iostd_diff
 from artiq.gateware import rtio
 
 from misoc.integration.builder import builder_args, builder_argdict
@@ -14,6 +13,7 @@ from elhep_cores.cores.xilinx_ila import ILAProbeAsync, ILAProbe, add_xilinx_ila
 from elhep_cores.cores.trigger_controller.trigger_generators import RtioBaselineTriggerGenerator
 from elhep_cores.cores.trigger_controller.trigger_controller import RtioTriggerController
 
+from elhep_cores.targets.afck1v1 import StandaloneBase, iostd_single, iostd_diff
 from elhep_cores.cores.circular_daq.circular_daq import CircularDAQ
 
 
@@ -48,8 +48,10 @@ class AfckTdc(StandaloneBase):
             signal_delay=23
         )
         self.add_rtio_channels(
-                rtio.Channel.from_phy(self.trigger_controller),
-                f"trigger_controller (RtioTriggerController")
+                channel=rtio.Channel.from_phy(self.trigger_controller), 
+                device_id=f"trigger_controller",
+                module="elhep_cores.coredevice.trigger_controller",
+                class_name="TriggerController")
 
         if self.with_ila:
             add_xilinx_ila()
@@ -94,14 +96,25 @@ class AfckTdc(StandaloneBase):
             ))
             setattr(self.submodules, f"{prefix}_daq{channel}", daq)
             self.add_rtio_channels(
-                rtio.Channel.from_phy(daq, ififo_depth=self.adc_daq_samples),
-                f"{prefix}_daq{channel} (AdcDaq)")
+                channel=rtio.Channel.from_phy(daq, ififo_depth=self.adc_daq_samples), 
+                device_id=f"{prefix}_daq{channel}",
+                module="elhep_cores.coredevice.circular_daq",
+                class_name="CircularDaq")
             
             baseline_tg = cd_renamer(RtioBaselineTriggerGenerator(
                 data=phy.data_o[channel],
                 name=f"{prefix}_daq{channel}_baseline_tg"
             ))
+            self.submodules += baseline_tg
             self.trigger_generators.append(baseline_tg)
+            self.add_rtio_channels(
+                channel=rtio.Channel.from_phy(baseline_tg.csr),
+                device_id=f"fmc{fmc_idx}_tdc{adc_idx}_ch{channel}_baseline_tg",
+                module="elhep_cores.coredevice.rtlink_csr",
+                class_name="RtlinkCsr",
+                arguments={
+                    "regs": baseline_tg.csr.regs
+            })
 
     def add_tdc(self, fmc_idx, tdc_idx):
         prefix = f"fmc{fmc_idx}_tdc{tdc_idx}"
@@ -122,8 +135,10 @@ class AfckTdc(StandaloneBase):
             ))
             setattr(self.submodules, f"{prefix}_daq{channel}", daq)
             self.add_rtio_channels(
-                rtio.Channel.from_phy(daq, ififo_depth=self.tdc_daq_samples),
-                f"{prefix}_daq{channel} (TdcDaq)")
+                channel=rtio.Channel.from_phy(daq, ififo_depth=self.tdc_daq_samples), 
+                device_id=f"{prefix}_daq{channel}",
+                module="elhep_cores.coredevice.circular_daq",
+                class_name="CircularDaq")
    
 
 def mcord_argdict(args):
@@ -145,9 +160,7 @@ def main():
     parser.set_defaults(output_dir="mcord_daq_fw")
     args = parser.parse_args()
 
-    print(args)
-
-    soc = AfckTdc(**mcord_argdict(args))
+    soc = AfckTdc(**mcord_argdict(args), output_dir=args.output_dir)
     build_artiq_soc(soc, builder_argdict(args))
 
 
