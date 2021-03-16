@@ -1,4 +1,5 @@
 import argparse
+import os
 
 from migen import *
 from artiq.build_soc import build_artiq_soc
@@ -54,7 +55,22 @@ class AfckTdc(StandaloneBase):
                 class_name="TriggerController")
 
         if self.with_ila:
-            add_xilinx_ila()
+            print("Building with ILA")
+            self.submodules += [
+                ILAProbe(self.fmc1_adc0_daq0_baseline_tg.trigger_re, "fmc1_adc0_daq0_trigger_re"),
+                ILAProbe(self.fmc1_adc0_daq0_baseline_tg.trigger_fe, "fmc1_adc0_daq0_trigger_fe"),
+                ILAProbe(self.fmc1_adc0_daq0_baseline_tg.trigger_level_offset, "fmc1_adc0_daq0_trigger_level_offset"),
+                ILAProbe(self.fmc1_adc0_daq0_baseline_tg.trigger_level, "fmc1_adc0_daq0_trigger_level"),
+                ILAProbe(self.fmc1_adc0_phy.data_o[0], "fmc1_adc0_phy_data0"),
+                ILAProbe(self.fmc1_adc0_phy.data_o[1], "fmc1_adc0_phy_data0"),
+                ILAProbe(self.fmc1_adc0_phy.bitslip_done, "fmc1_adc0_phy_bitslip_done"),                
+                ILAProbe(self.fmc1_adc0_daq0.trigger_dclk, "fmc1_adc0_daq0_trigger"),
+                ILAProbe(self.fmc1_adc0_daq0.posttrigger_dclk, "fmc1_adc0_daq0_posttrigger"),
+                ILAProbe(self.fmc1_adc0_daq0.pretrigger_dclk, "fmc1_adc0_daq0_pretrigger"),
+            ]
+            debug_clock = self.crg.cd_sys.clk
+            add_xilinx_ila(target=self, debug_clock=debug_clock, depth=2048)
+
 
         # sclk = self.platform.request("vcxo_dac_sclk") 
         # mosi = self.platform.request("vcxo_dac_din") 
@@ -105,7 +121,7 @@ class AfckTdc(StandaloneBase):
                 data=phy.data_o[channel],
                 name=f"{prefix}_daq{channel}_baseline_tg"
             ))
-            self.submodules += baseline_tg
+            setattr(self.submodules, f"{prefix}_daq{channel}_baseline_tg", baseline_tg)
             self.trigger_generators.append(baseline_tg)
             self.add_rtio_channels(
                 channel=rtio.Channel.from_phy(baseline_tg.csr),
@@ -159,6 +175,8 @@ def main():
     parser.add_argument("--with-fmc2", action="store_true", help="Add FMC TDC to FMC2")
     parser.set_defaults(output_dir="mcord_daq_fw")
     args = parser.parse_args()
+
+    os.makedirs(args.output_dir, exist_ok=True)
 
     soc = AfckTdc(**mcord_argdict(args), output_dir=args.output_dir)
     build_artiq_soc(soc, builder_argdict(args))
