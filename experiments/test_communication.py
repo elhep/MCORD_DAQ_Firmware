@@ -1,7 +1,6 @@
 from artiq.experiment import *
 from artiq.language.units import ns, us
 from pprint import pprint
-from coredevice.fmc_adc100M_10b_tdc_16cha import FmcAdc100M10bTdc16cha
 
 
 class TestComm(EnvExperiment):

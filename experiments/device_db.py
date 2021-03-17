@@ -1,39 +1,1445 @@
-core_addr = "192.168.1.203"
-
 device_db = {
     "core": {
         "type": "local",
         "module": "artiq.coredevice.core",
         "class": "Core",
-        "arguments": {"host": core_addr, "ref_period": 1e-9}
-    },
-    "core_log": {
-        "type": "controller",
-        "host": "::1",
-        "port": 1068,
-        "command": "aqctl_corelog -p {port} --bind {bind} " + core_addr
+        "arguments": {
+            "host": "192.168.95.203",
+            "ref_period": 1e-09
+        }
     },
     "core_cache": {
         "type": "local",
         "module": "artiq.coredevice.cache",
         "class": "CoreCache"
     },
-    "core_dma": {
+    "code_dma": {
         "type": "local",
         "module": "artiq.coredevice.dma",
         "class": "CoreDMA"
     },
-    "i2c_mux": {
+    "fmc1_cfd_offset_dac0": {
         "type": "local",
-        "module": "coredevice.pca9547",
-        "class": "PCA9547",
-        "arguments": {"address": 0xe0}
+        "module": "elhep_cores.coredevice.dac7578",
+        "class": "DAC7578",
+        "arguments": {
+            "bus": 1,
+            "address": 72
+        }
     },
-
+    "fmc1_cfd_offset_dac1": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.dac7578",
+        "class": "DAC7578",
+        "arguments": {
+            "bus": 1,
+            "address": 73
+        }
+    },
+    "fmc1_tdc_dis0": {
+        "type": "local",
+        "module": "artiq.coredevice.ttl",
+        "class": "TTLOut",
+        "arguments": {
+            "channel": 0
+        }
+    },
+    "fmc1_tdc_dis1": {
+        "type": "local",
+        "module": "artiq.coredevice.ttl",
+        "class": "TTLOut",
+        "arguments": {
+            "channel": 1
+        }
+    },
+    "fmc1_tdc_dis2": {
+        "type": "local",
+        "module": "artiq.coredevice.ttl",
+        "class": "TTLOut",
+        "arguments": {
+            "channel": 2
+        }
+    },
+    "fmc1_tdc_dis3": {
+        "type": "local",
+        "module": "artiq.coredevice.ttl",
+        "class": "TTLOut",
+        "arguments": {
+            "channel": 3
+        }
+    },
+    "fmc1_idx_in": {
+        "type": "local",
+        "module": "artiq.coredevice.ttl",
+        "class": "TTLOut",
+        "arguments": {
+            "channel": 4
+        }
+    },
+    "fmc1_adc_resetn": {
+        "type": "local",
+        "module": "artiq.coredevice.ttl",
+        "class": "TTLOut",
+        "arguments": {
+            "channel": 5
+        }
+    },
+    "fmc1_adc_sync": {
+        "type": "local",
+        "module": "artiq.coredevice.ttl",
+        "class": "TTLOut",
+        "arguments": {
+            "channel": 6
+        }
+    },
+    "fmc1_trig_term": {
+        "type": "local",
+        "module": "artiq.coredevice.ttl",
+        "class": "TTLOut",
+        "arguments": {
+            "channel": 7
+        }
+    },
+    "fmc1_trig_dir": {
+        "type": "local",
+        "module": "artiq.coredevice.ttl",
+        "class": "TTLOut",
+        "arguments": {
+            "channel": 8
+        }
+    },
+    "fmc1_ref_sel": {
+        "type": "local",
+        "module": "artiq.coredevice.ttl",
+        "class": "TTLOut",
+        "arguments": {
+            "channel": 9
+        }
+    },
+    "fmc1_idx_src_sel": {
+        "type": "local",
+        "module": "artiq.coredevice.ttl",
+        "class": "TTLOut",
+        "arguments": {
+            "channel": 10
+        }
+    },
+    "fmc1_tdc_spi": {
+        "type": "local",
+        "module": "artiq.coredevice.spi2",
+        "class": "SPIMaster",
+        "arguments": {
+            "channel": 11
+        }
+    },
+    "fmc1_adc_spi": {
+        "type": "local",
+        "module": "artiq.coredevice.spi2",
+        "class": "SPIMaster",
+        "arguments": {
+            "channel": 12
+        }
+    },
+    "fmc1_csn0": {
+        "type": "local",
+        "module": "artiq.coredevice.ttl",
+        "class": "TTLOut",
+        "arguments": {
+            "channel": 13
+        }
+    },
+    "fmc1_csn1": {
+        "type": "local",
+        "module": "artiq.coredevice.ttl",
+        "class": "TTLOut",
+        "arguments": {
+            "channel": 14
+        }
+    },
+    "fmc1_csn2": {
+        "type": "local",
+        "module": "artiq.coredevice.ttl",
+        "class": "TTLOut",
+        "arguments": {
+            "channel": 15
+        }
+    },
+    "fmc1_csn3": {
+        "type": "local",
+        "module": "artiq.coredevice.ttl",
+        "class": "TTLOut",
+        "arguments": {
+            "channel": 16
+        }
+    },
+    "fmc1_csn4": {
+        "type": "local",
+        "module": "artiq.coredevice.ttl",
+        "class": "TTLOut",
+        "arguments": {
+            "channel": 17
+        }
+    },
+    "fmc1_csn5": {
+        "type": "local",
+        "module": "artiq.coredevice.ttl",
+        "class": "TTLOut",
+        "arguments": {
+            "channel": 18
+        }
+    },
+    "fmc1_csn6": {
+        "type": "local",
+        "module": "artiq.coredevice.ttl",
+        "class": "TTLOut",
+        "arguments": {
+            "channel": 19
+        }
+    },
+    "fmc1_clock_dist": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.ad9528",
+        "class": "AD9528",
+        "arguments": {
+            "spi_device": "fmc1_tdc_spi",
+            "chip_select": "fmc1_csn4"
+        }
+    },
+    "fmc1_adc0_phycsr": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.rtlink_csr",
+        "class": "RtlinkCsr",
+        "arguments": {
+            "regs": [
+                [
+                    "data0_delay_value",
+                    5
+                ],
+                [
+                    "data1_delay_value",
+                    5
+                ],
+                [
+                    "data2_delay_value",
+                    5
+                ],
+                [
+                    "data3_delay_value",
+                    5
+                ],
+                [
+                    "data4_delay_value",
+                    5
+                ],
+                [
+                    "data5_delay_value",
+                    5
+                ],
+                [
+                    "data6_delay_value",
+                    5
+                ],
+                [
+                    "data7_delay_value",
+                    5
+                ],
+                [
+                    "data8_delay_value",
+                    5
+                ],
+                [
+                    "adclk_delay_value",
+                    5
+                ],
+                [
+                    "phy_reset",
+                    1,
+                    1
+                ],
+                [
+                    "bitslip_done",
+                    1,
+                    0,
+                    "ro"
+                ]
+            ],
+            "channel": 20
+        }
+    },
+    "fmc1_adc0_control": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.ads5296a",
+        "class": "ADS5296A",
+        "arguments": {
+            "spi_device": "fmc1_adc_spi",
+            "phy_csr": "fmc1_adc0_phycsr",
+            "chip_select": "fmc1_csn5",
+            "spi_freq": 500000
+        }
+    },
+    "fmc1_adc1_phycsr": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.rtlink_csr",
+        "class": "RtlinkCsr",
+        "arguments": {
+            "regs": [
+                [
+                    "data0_delay_value",
+                    5
+                ],
+                [
+                    "data1_delay_value",
+                    5
+                ],
+                [
+                    "data2_delay_value",
+                    5
+                ],
+                [
+                    "data3_delay_value",
+                    5
+                ],
+                [
+                    "data4_delay_value",
+                    5
+                ],
+                [
+                    "data5_delay_value",
+                    5
+                ],
+                [
+                    "data6_delay_value",
+                    5
+                ],
+                [
+                    "data7_delay_value",
+                    5
+                ],
+                [
+                    "data8_delay_value",
+                    5
+                ],
+                [
+                    "adclk_delay_value",
+                    5
+                ],
+                [
+                    "phy_reset",
+                    1,
+                    1
+                ],
+                [
+                    "bitslip_done",
+                    1,
+                    0,
+                    "ro"
+                ]
+            ],
+            "channel": 21
+        }
+    },
+    "fmc1_adc1_control": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.ads5296a",
+        "class": "ADS5296A",
+        "arguments": {
+            "spi_device": "fmc1_adc_spi",
+            "phy_csr": "fmc1_adc1_phycsr",
+            "chip_select": "fmc1_csn6",
+            "spi_freq": 500000
+        }
+    },
+    "fmc1_tdc0_phycsr_0": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.rtlink_csr",
+        "class": "RtlinkCsr",
+        "arguments": {
+            "regs": [
+                [
+                    "frame_length",
+                    6,
+                    22
+                ],
+                [
+                    "frame_delay_value",
+                    5
+                ],
+                [
+                    "data_delay_value",
+                    5
+                ]
+            ],
+            "channel": 22
+        }
+    },
+    "fmc1_tdc0_phycsr_1": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.rtlink_csr",
+        "class": "RtlinkCsr",
+        "arguments": {
+            "regs": [
+                [
+                    "frame_length",
+                    6,
+                    22
+                ],
+                [
+                    "frame_delay_value",
+                    5
+                ],
+                [
+                    "data_delay_value",
+                    5
+                ]
+            ],
+            "channel": 23
+        }
+    },
+    "fmc1_tdc0_phycsr_2": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.rtlink_csr",
+        "class": "RtlinkCsr",
+        "arguments": {
+            "regs": [
+                [
+                    "frame_length",
+                    6,
+                    22
+                ],
+                [
+                    "frame_delay_value",
+                    5
+                ],
+                [
+                    "data_delay_value",
+                    5
+                ]
+            ],
+            "channel": 24
+        }
+    },
+    "fmc1_tdc0_phycsr_3": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.rtlink_csr",
+        "class": "RtlinkCsr",
+        "arguments": {
+            "regs": [
+                [
+                    "frame_length",
+                    6,
+                    22
+                ],
+                [
+                    "frame_delay_value",
+                    5
+                ],
+                [
+                    "data_delay_value",
+                    5
+                ]
+            ],
+            "channel": 25
+        }
+    },
+    "fmc1_tdc0_control": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.tdc_gpx2",
+        "class": "TDCGPX2",
+        "arguments": {
+            "spi_device": "fmc1_tdc_spi",
+            "phy_csr_prefix": "fmc1_tdc0_phycsr_",
+            "chip_select": "fmc1_csn0",
+            "spi_freq": 1000000
+        }
+    },
+    "fmc1_tdc1_phycsr_0": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.rtlink_csr",
+        "class": "RtlinkCsr",
+        "arguments": {
+            "regs": [
+                [
+                    "frame_length",
+                    6,
+                    22
+                ],
+                [
+                    "frame_delay_value",
+                    5
+                ],
+                [
+                    "data_delay_value",
+                    5
+                ]
+            ],
+            "channel": 26
+        }
+    },
+    "fmc1_tdc1_phycsr_1": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.rtlink_csr",
+        "class": "RtlinkCsr",
+        "arguments": {
+            "regs": [
+                [
+                    "frame_length",
+                    6,
+                    22
+                ],
+                [
+                    "frame_delay_value",
+                    5
+                ],
+                [
+                    "data_delay_value",
+                    5
+                ]
+            ],
+            "channel": 27
+        }
+    },
+    "fmc1_tdc1_phycsr_2": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.rtlink_csr",
+        "class": "RtlinkCsr",
+        "arguments": {
+            "regs": [
+                [
+                    "frame_length",
+                    6,
+                    22
+                ],
+                [
+                    "frame_delay_value",
+                    5
+                ],
+                [
+                    "data_delay_value",
+                    5
+                ]
+            ],
+            "channel": 28
+        }
+    },
+    "fmc1_tdc1_phycsr_3": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.rtlink_csr",
+        "class": "RtlinkCsr",
+        "arguments": {
+            "regs": [
+                [
+                    "frame_length",
+                    6,
+                    22
+                ],
+                [
+                    "frame_delay_value",
+                    5
+                ],
+                [
+                    "data_delay_value",
+                    5
+                ]
+            ],
+            "channel": 29
+        }
+    },
+    "fmc1_tdc1_control": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.tdc_gpx2",
+        "class": "TDCGPX2",
+        "arguments": {
+            "spi_device": "fmc1_tdc_spi",
+            "phy_csr_prefix": "fmc1_tdc1_phycsr_",
+            "chip_select": "fmc1_csn1",
+            "spi_freq": 1000000
+        }
+    },
+    "fmc1_tdc2_phycsr_0": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.rtlink_csr",
+        "class": "RtlinkCsr",
+        "arguments": {
+            "regs": [
+                [
+                    "frame_length",
+                    6,
+                    22
+                ],
+                [
+                    "frame_delay_value",
+                    5
+                ],
+                [
+                    "data_delay_value",
+                    5
+                ]
+            ],
+            "channel": 30
+        }
+    },
+    "fmc1_tdc2_phycsr_1": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.rtlink_csr",
+        "class": "RtlinkCsr",
+        "arguments": {
+            "regs": [
+                [
+                    "frame_length",
+                    6,
+                    22
+                ],
+                [
+                    "frame_delay_value",
+                    5
+                ],
+                [
+                    "data_delay_value",
+                    5
+                ]
+            ],
+            "channel": 31
+        }
+    },
+    "fmc1_tdc2_phycsr_2": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.rtlink_csr",
+        "class": "RtlinkCsr",
+        "arguments": {
+            "regs": [
+                [
+                    "frame_length",
+                    6,
+                    22
+                ],
+                [
+                    "frame_delay_value",
+                    5
+                ],
+                [
+                    "data_delay_value",
+                    5
+                ]
+            ],
+            "channel": 32
+        }
+    },
+    "fmc1_tdc2_phycsr_3": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.rtlink_csr",
+        "class": "RtlinkCsr",
+        "arguments": {
+            "regs": [
+                [
+                    "frame_length",
+                    6,
+                    22
+                ],
+                [
+                    "frame_delay_value",
+                    5
+                ],
+                [
+                    "data_delay_value",
+                    5
+                ]
+            ],
+            "channel": 33
+        }
+    },
+    "fmc1_tdc2_control": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.tdc_gpx2",
+        "class": "TDCGPX2",
+        "arguments": {
+            "spi_device": "fmc1_tdc_spi",
+            "phy_csr_prefix": "fmc1_tdc2_phycsr_",
+            "chip_select": "fmc1_csn2",
+            "spi_freq": 1000000
+        }
+    },
+    "fmc1_tdc3_phycsr_0": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.rtlink_csr",
+        "class": "RtlinkCsr",
+        "arguments": {
+            "regs": [
+                [
+                    "frame_length",
+                    6,
+                    22
+                ],
+                [
+                    "frame_delay_value",
+                    5
+                ],
+                [
+                    "data_delay_value",
+                    5
+                ]
+            ],
+            "channel": 34
+        }
+    },
+    "fmc1_tdc3_phycsr_1": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.rtlink_csr",
+        "class": "RtlinkCsr",
+        "arguments": {
+            "regs": [
+                [
+                    "frame_length",
+                    6,
+                    22
+                ],
+                [
+                    "frame_delay_value",
+                    5
+                ],
+                [
+                    "data_delay_value",
+                    5
+                ]
+            ],
+            "channel": 35
+        }
+    },
+    "fmc1_tdc3_phycsr_2": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.rtlink_csr",
+        "class": "RtlinkCsr",
+        "arguments": {
+            "regs": [
+                [
+                    "frame_length",
+                    6,
+                    22
+                ],
+                [
+                    "frame_delay_value",
+                    5
+                ],
+                [
+                    "data_delay_value",
+                    5
+                ]
+            ],
+            "channel": 36
+        }
+    },
+    "fmc1_tdc3_phycsr_3": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.rtlink_csr",
+        "class": "RtlinkCsr",
+        "arguments": {
+            "regs": [
+                [
+                    "frame_length",
+                    6,
+                    22
+                ],
+                [
+                    "frame_delay_value",
+                    5
+                ],
+                [
+                    "data_delay_value",
+                    5
+                ]
+            ],
+            "channel": 37
+        }
+    },
+    "fmc1_tdc3_control": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.tdc_gpx2",
+        "class": "TDCGPX2",
+        "arguments": {
+            "spi_device": "fmc1_tdc_spi",
+            "phy_csr_prefix": "fmc1_tdc3_phycsr_",
+            "chip_select": "fmc1_csn3",
+            "spi_freq": 1000000
+        }
+    },
+    "fmc1_trig": {
+        "type": "local",
+        "module": "artiq.coredevice.ttl",
+        "class": "TTLInOut",
+        "arguments": {
+            "channel": 38
+        }
+    },
+    "fmc1_clk0_m2c_ttl_input": {
+        "type": "local",
+        "module": "artiq.coredevice.ttl",
+        "class": "TTLInOut",
+        "arguments": {
+            "channel": 39
+        }
+    },
+    "fmc1_clk0_m2c_edge_counter": {
+        "type": "local",
+        "module": "artiq.coredevice.edge_counter",
+        "class": "EdgeCounter",
+        "arguments": {
+            "channel": 40
+        }
+    },
+    "fmc1_clk1_m2c_ttl_input": {
+        "type": "local",
+        "module": "artiq.coredevice.ttl",
+        "class": "TTLInOut",
+        "arguments": {
+            "channel": 41
+        }
+    },
+    "fmc1_clk1_m2c_edge_counter": {
+        "type": "local",
+        "module": "artiq.coredevice.edge_counter",
+        "class": "EdgeCounter",
+        "arguments": {
+            "channel": 42
+        }
+    },
+    "fmc1_phy_adc0_lclk_input": {
+        "type": "local",
+        "module": "artiq.coredevice.ttl",
+        "class": "TTLInOut",
+        "arguments": {
+            "channel": 43
+        }
+    },
+    "fmc1_phy_adc0_lclk_counter": {
+        "type": "local",
+        "module": "artiq.coredevice.edge_counter",
+        "class": "EdgeCounter",
+        "arguments": {
+            "channel": 44
+        }
+    },
+    "fmc1_phy_adc1_lclk_input": {
+        "type": "local",
+        "module": "artiq.coredevice.ttl",
+        "class": "TTLInOut",
+        "arguments": {
+            "channel": 45
+        }
+    },
+    "fmc1_phy_adc1_lclk_counter": {
+        "type": "local",
+        "module": "artiq.coredevice.edge_counter",
+        "class": "EdgeCounter",
+        "arguments": {
+            "channel": 46
+        }
+    },
     "fmc1": {
         "type": "local",
-        "module": "coredevice.fmc_adc100M_10b_tdc_16cha",
+        "module": "elhep_cores.coredevice.fmc_adc100M_10b_tdc_16cha",
         "class": "FmcAdc100M10bTdc16cha",
-        "arguments": {"channel": 0x0, "with_trig": True}
+        "arguments": {
+            "prefix": "fmc1"
+        }
     },
+    "fmc1_adc0_daq0": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.circular_daq",
+        "class": "CircularDaq",
+        "arguments": {
+            "data_width": 10,
+            "trigger_cnt_width": 4,
+            "channel": 47
+        }
+    },
+    "fmc1_tdc0_ch0_baseline_tg": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.rtlink_csr",
+        "class": "RtlinkCsr",
+        "arguments": {
+            "regs": [
+                [
+                    "offset_level",
+                    10
+                ]
+            ],
+            "channel": 48
+        }
+    },
+    "fmc1_adc0_daq1": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.circular_daq",
+        "class": "CircularDaq",
+        "arguments": {
+            "data_width": 10,
+            "trigger_cnt_width": 4,
+            "channel": 49
+        }
+    },
+    "fmc1_tdc0_ch1_baseline_tg": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.rtlink_csr",
+        "class": "RtlinkCsr",
+        "arguments": {
+            "regs": [
+                [
+                    "offset_level",
+                    10
+                ]
+            ],
+            "channel": 50
+        }
+    },
+    "fmc1_adc0_daq2": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.circular_daq",
+        "class": "CircularDaq",
+        "arguments": {
+            "data_width": 10,
+            "trigger_cnt_width": 4,
+            "channel": 51
+        }
+    },
+    "fmc1_tdc0_ch2_baseline_tg": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.rtlink_csr",
+        "class": "RtlinkCsr",
+        "arguments": {
+            "regs": [
+                [
+                    "offset_level",
+                    10
+                ]
+            ],
+            "channel": 52
+        }
+    },
+    "fmc1_adc0_daq3": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.circular_daq",
+        "class": "CircularDaq",
+        "arguments": {
+            "data_width": 10,
+            "trigger_cnt_width": 4,
+            "channel": 53
+        }
+    },
+    "fmc1_tdc0_ch3_baseline_tg": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.rtlink_csr",
+        "class": "RtlinkCsr",
+        "arguments": {
+            "regs": [
+                [
+                    "offset_level",
+                    10
+                ]
+            ],
+            "channel": 54
+        }
+    },
+    "fmc1_adc0_daq4": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.circular_daq",
+        "class": "CircularDaq",
+        "arguments": {
+            "data_width": 10,
+            "trigger_cnt_width": 4,
+            "channel": 55
+        }
+    },
+    "fmc1_tdc0_ch4_baseline_tg": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.rtlink_csr",
+        "class": "RtlinkCsr",
+        "arguments": {
+            "regs": [
+                [
+                    "offset_level",
+                    10
+                ]
+            ],
+            "channel": 56
+        }
+    },
+    "fmc1_adc0_daq5": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.circular_daq",
+        "class": "CircularDaq",
+        "arguments": {
+            "data_width": 10,
+            "trigger_cnt_width": 4,
+            "channel": 57
+        }
+    },
+    "fmc1_tdc0_ch5_baseline_tg": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.rtlink_csr",
+        "class": "RtlinkCsr",
+        "arguments": {
+            "regs": [
+                [
+                    "offset_level",
+                    10
+                ]
+            ],
+            "channel": 58
+        }
+    },
+    "fmc1_adc0_daq6": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.circular_daq",
+        "class": "CircularDaq",
+        "arguments": {
+            "data_width": 10,
+            "trigger_cnt_width": 4,
+            "channel": 59
+        }
+    },
+    "fmc1_tdc0_ch6_baseline_tg": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.rtlink_csr",
+        "class": "RtlinkCsr",
+        "arguments": {
+            "regs": [
+                [
+                    "offset_level",
+                    10
+                ]
+            ],
+            "channel": 60
+        }
+    },
+    "fmc1_adc0_daq7": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.circular_daq",
+        "class": "CircularDaq",
+        "arguments": {
+            "data_width": 10,
+            "trigger_cnt_width": 4,
+            "channel": 61
+        }
+    },
+    "fmc1_tdc0_ch7_baseline_tg": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.rtlink_csr",
+        "class": "RtlinkCsr",
+        "arguments": {
+            "regs": [
+                [
+                    "offset_level",
+                    10
+                ]
+            ],
+            "channel": 62
+        }
+    },
+    "fmc1_adc0_daq8": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.circular_daq",
+        "class": "CircularDaq",
+        "arguments": {
+            "data_width": 10,
+            "trigger_cnt_width": 4,
+            "channel": 63
+        }
+    },
+    "fmc1_tdc0_ch8_baseline_tg": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.rtlink_csr",
+        "class": "RtlinkCsr",
+        "arguments": {
+            "regs": [
+                [
+                    "offset_level",
+                    10
+                ]
+            ],
+            "channel": 64
+        }
+    },
+    "fmc1_adc1_daq0": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.circular_daq",
+        "class": "CircularDaq",
+        "arguments": {
+            "data_width": 10,
+            "trigger_cnt_width": 4,
+            "channel": 65
+        }
+    },
+    "fmc1_tdc1_ch0_baseline_tg": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.rtlink_csr",
+        "class": "RtlinkCsr",
+        "arguments": {
+            "regs": [
+                [
+                    "offset_level",
+                    10
+                ]
+            ],
+            "channel": 66
+        }
+    },
+    "fmc1_adc1_daq1": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.circular_daq",
+        "class": "CircularDaq",
+        "arguments": {
+            "data_width": 10,
+            "trigger_cnt_width": 4,
+            "channel": 67
+        }
+    },
+    "fmc1_tdc1_ch1_baseline_tg": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.rtlink_csr",
+        "class": "RtlinkCsr",
+        "arguments": {
+            "regs": [
+                [
+                    "offset_level",
+                    10
+                ]
+            ],
+            "channel": 68
+        }
+    },
+    "fmc1_adc1_daq2": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.circular_daq",
+        "class": "CircularDaq",
+        "arguments": {
+            "data_width": 10,
+            "trigger_cnt_width": 4,
+            "channel": 69
+        }
+    },
+    "fmc1_tdc1_ch2_baseline_tg": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.rtlink_csr",
+        "class": "RtlinkCsr",
+        "arguments": {
+            "regs": [
+                [
+                    "offset_level",
+                    10
+                ]
+            ],
+            "channel": 70
+        }
+    },
+    "fmc1_adc1_daq3": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.circular_daq",
+        "class": "CircularDaq",
+        "arguments": {
+            "data_width": 10,
+            "trigger_cnt_width": 4,
+            "channel": 71
+        }
+    },
+    "fmc1_tdc1_ch3_baseline_tg": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.rtlink_csr",
+        "class": "RtlinkCsr",
+        "arguments": {
+            "regs": [
+                [
+                    "offset_level",
+                    10
+                ]
+            ],
+            "channel": 72
+        }
+    },
+    "fmc1_adc1_daq4": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.circular_daq",
+        "class": "CircularDaq",
+        "arguments": {
+            "data_width": 10,
+            "trigger_cnt_width": 4,
+            "channel": 73
+        }
+    },
+    "fmc1_tdc1_ch4_baseline_tg": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.rtlink_csr",
+        "class": "RtlinkCsr",
+        "arguments": {
+            "regs": [
+                [
+                    "offset_level",
+                    10
+                ]
+            ],
+            "channel": 74
+        }
+    },
+    "fmc1_adc1_daq5": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.circular_daq",
+        "class": "CircularDaq",
+        "arguments": {
+            "data_width": 10,
+            "trigger_cnt_width": 4,
+            "channel": 75
+        }
+    },
+    "fmc1_tdc1_ch5_baseline_tg": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.rtlink_csr",
+        "class": "RtlinkCsr",
+        "arguments": {
+            "regs": [
+                [
+                    "offset_level",
+                    10
+                ]
+            ],
+            "channel": 76
+        }
+    },
+    "fmc1_adc1_daq6": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.circular_daq",
+        "class": "CircularDaq",
+        "arguments": {
+            "data_width": 10,
+            "trigger_cnt_width": 4,
+            "channel": 77
+        }
+    },
+    "fmc1_tdc1_ch6_baseline_tg": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.rtlink_csr",
+        "class": "RtlinkCsr",
+        "arguments": {
+            "regs": [
+                [
+                    "offset_level",
+                    10
+                ]
+            ],
+            "channel": 78
+        }
+    },
+    "fmc1_adc1_daq7": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.circular_daq",
+        "class": "CircularDaq",
+        "arguments": {
+            "data_width": 10,
+            "trigger_cnt_width": 4,
+            "channel": 79
+        }
+    },
+    "fmc1_tdc1_ch7_baseline_tg": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.rtlink_csr",
+        "class": "RtlinkCsr",
+        "arguments": {
+            "regs": [
+                [
+                    "offset_level",
+                    10
+                ]
+            ],
+            "channel": 80
+        }
+    },
+    "fmc1_adc1_daq8": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.circular_daq",
+        "class": "CircularDaq",
+        "arguments": {
+            "data_width": 10,
+            "trigger_cnt_width": 4,
+            "channel": 81
+        }
+    },
+    "fmc1_tdc1_ch8_baseline_tg": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.rtlink_csr",
+        "class": "RtlinkCsr",
+        "arguments": {
+            "regs": [
+                [
+                    "offset_level",
+                    10
+                ]
+            ],
+            "channel": 82
+        }
+    },
+    "fmc1_tdc0_daq0": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.circular_daq",
+        "class": "CircularDaq",
+        "arguments": {
+            "data_width": 22,
+            "trigger_cnt_width": 4,
+            "channel": 83
+        }
+    },
+    "fmc1_tdc0_daq1": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.circular_daq",
+        "class": "CircularDaq",
+        "arguments": {
+            "data_width": 22,
+            "trigger_cnt_width": 4,
+            "channel": 84
+        }
+    },
+    "fmc1_tdc0_daq2": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.circular_daq",
+        "class": "CircularDaq",
+        "arguments": {
+            "data_width": 22,
+            "trigger_cnt_width": 4,
+            "channel": 85
+        }
+    },
+    "fmc1_tdc0_daq3": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.circular_daq",
+        "class": "CircularDaq",
+        "arguments": {
+            "data_width": 22,
+            "trigger_cnt_width": 4,
+            "channel": 86
+        }
+    },
+    "fmc1_tdc1_daq0": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.circular_daq",
+        "class": "CircularDaq",
+        "arguments": {
+            "data_width": 22,
+            "trigger_cnt_width": 4,
+            "channel": 87
+        }
+    },
+    "fmc1_tdc1_daq1": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.circular_daq",
+        "class": "CircularDaq",
+        "arguments": {
+            "data_width": 22,
+            "trigger_cnt_width": 4,
+            "channel": 88
+        }
+    },
+    "fmc1_tdc1_daq2": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.circular_daq",
+        "class": "CircularDaq",
+        "arguments": {
+            "data_width": 22,
+            "trigger_cnt_width": 4,
+            "channel": 89
+        }
+    },
+    "fmc1_tdc1_daq3": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.circular_daq",
+        "class": "CircularDaq",
+        "arguments": {
+            "data_width": 22,
+            "trigger_cnt_width": 4,
+            "channel": 90
+        }
+    },
+    "fmc1_tdc2_daq0": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.circular_daq",
+        "class": "CircularDaq",
+        "arguments": {
+            "data_width": 22,
+            "trigger_cnt_width": 4,
+            "channel": 91
+        }
+    },
+    "fmc1_tdc2_daq1": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.circular_daq",
+        "class": "CircularDaq",
+        "arguments": {
+            "data_width": 22,
+            "trigger_cnt_width": 4,
+            "channel": 92
+        }
+    },
+    "fmc1_tdc2_daq2": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.circular_daq",
+        "class": "CircularDaq",
+        "arguments": {
+            "data_width": 22,
+            "trigger_cnt_width": 4,
+            "channel": 93
+        }
+    },
+    "fmc1_tdc2_daq3": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.circular_daq",
+        "class": "CircularDaq",
+        "arguments": {
+            "data_width": 22,
+            "trigger_cnt_width": 4,
+            "channel": 94
+        }
+    },
+    "fmc1_tdc3_daq0": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.circular_daq",
+        "class": "CircularDaq",
+        "arguments": {
+            "data_width": 22,
+            "trigger_cnt_width": 4,
+            "channel": 95
+        }
+    },
+    "fmc1_tdc3_daq1": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.circular_daq",
+        "class": "CircularDaq",
+        "arguments": {
+            "data_width": 22,
+            "trigger_cnt_width": 4,
+            "channel": 96
+        }
+    },
+    "fmc1_tdc3_daq2": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.circular_daq",
+        "class": "CircularDaq",
+        "arguments": {
+            "data_width": 22,
+            "trigger_cnt_width": 4,
+            "channel": 97
+        }
+    },
+    "fmc1_tdc3_daq3": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.circular_daq",
+        "class": "CircularDaq",
+        "arguments": {
+            "data_width": 22,
+            "trigger_cnt_width": 4,
+            "channel": 98
+        }
+    },
+    "trigger_controller": {
+        "type": "local",
+        "module": "elhep_cores.coredevice.trigger_controller",
+        "class": "TriggerController",
+        "arguments": {
+            "channel": 99,
+            "layout": "trigger_rtlink_layout.json"
+        }
+    }
 }

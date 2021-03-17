@@ -1,1 +1,7 @@
 **.pyc
+.Xil/**
+*.txt
+mcord_daq_fw/**
+*.jou
+*.log
+*.str

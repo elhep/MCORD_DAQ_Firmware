@@ -1,0 +1,15 @@
+diff --git a/artiq/firmware/runtime/main.rs b/artiq/firmware/runtime/main.rs
+index c64d0fc6..9e5a3150 100644
+--- a/artiq/firmware/runtime/main.rs
++++ b/artiq/firmware/runtime/main.rs
+@@ -96,8 +96,8 @@ fn startup() {
+     info!("gateware ident {}", ident::read(&mut [0; 64]));
+ 
+     setup_log_levels();
+-    #[cfg(has_i2c)]
+-    board_misoc::i2c::init().expect("I2C initialization failed");
++    //#[cfg(has_i2c)]
++    //board_misoc::i2c::init().expect("I2C initialization failed");
+     #[cfg(all(soc_platform = "kasli", hw_rev = "v2.0"))]
+     let (mut io_expander0, mut io_expander1);
+     #[cfg(all(soc_platform = "kasli", hw_rev = "v2.0"))]

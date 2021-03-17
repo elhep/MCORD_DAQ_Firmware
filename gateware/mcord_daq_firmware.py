@@ -16,6 +16,7 @@ from elhep_cores.cores.trigger_controller.trigger_controller import RtioTriggerC
 
 from elhep_cores.targets.afck1v1 import StandaloneBase, iostd_single, iostd_diff
 from elhep_cores.cores.circular_daq.circular_daq import CircularDAQ
+from elhep_cores.cores.dac_spi import DacSpi
 
 
 class AfckTdc(StandaloneBase):
@@ -61,28 +62,37 @@ class AfckTdc(StandaloneBase):
                 ILAProbe(self.fmc1_adc0_daq0_baseline_tg.trigger_fe, "fmc1_adc0_daq0_trigger_fe"),
                 ILAProbe(self.fmc1_adc0_daq0_baseline_tg.trigger_level_offset, "fmc1_adc0_daq0_trigger_level_offset"),
                 ILAProbe(self.fmc1_adc0_daq0_baseline_tg.trigger_level, "fmc1_adc0_daq0_trigger_level"),
+
                 ILAProbe(self.fmc1_adc0_phy.data_o[0], "fmc1_adc0_phy_data0"),
-                ILAProbe(self.fmc1_adc0_phy.data_o[1], "fmc1_adc0_phy_data0"),
+                ILAProbe(self.fmc1_adc0_phy.data_o[8], "fmc1_adc0_phy_data8"),
                 ILAProbe(self.fmc1_adc0_phy.bitslip_done, "fmc1_adc0_phy_bitslip_done"),                
                 ILAProbe(self.fmc1_adc0_daq0.trigger_dclk, "fmc1_adc0_daq0_trigger"),
                 ILAProbe(self.fmc1_adc0_daq0.posttrigger_dclk, "fmc1_adc0_daq0_posttrigger"),
                 ILAProbe(self.fmc1_adc0_daq0.pretrigger_dclk, "fmc1_adc0_daq0_pretrigger"),
+
+                ILAProbe(self.fmc1_tdc0_phy.phy_channels[0].data_o, "fmc1_tdc0_phy_data0"),
+                ILAProbe(self.fmc1_tdc0_phy.phy_channels[0].stb_o, "fmc1_tdc0_phy_stb0"),
+                ILAProbe(self.fmc1_tdc0_phy.phy_channels[0].frame_start, "fmc1_tdc0_phy_frame_start0"),
+                ILAProbe(self.fmc1_tdc0_phy.phy_channels[0].csr.frame_length, "fmc1_tdc0_phy_frame_length0"),
+                ILAProbe(self.fmc1_tdc0_daq0.trigger_dclk, "fmc1_tdc0_daq0_trigger"),
+                ILAProbe(self.fmc1_tdc0_daq0.posttrigger_dclk, "fmc1_tdc0_daq0_posttrigger"),
+                ILAProbe(self.fmc1_tdc0_daq0.pretrigger_dclk, "fmc1_tdc0_daq0_pretrigger"),
             ]
             debug_clock = self.crg.cd_sys.clk
-            add_xilinx_ila(target=self, debug_clock=debug_clock, depth=2048)
+            add_xilinx_ila(target=self, debug_clock=debug_clock, output_dir=self.output_dir, depth=2048)
 
 
-        # sclk = self.platform.request("vcxo_dac_sclk") 
-        # mosi = self.platform.request("vcxo_dac_din") 
-        # syncn = [
-        #     self.platform.request("vcxo_dac1_sync_n"),
-        #     self.platform.request("vcxo_dac2_sync_n")
-        # ]
-        # ncs = Signal()
+        sclk = self.platform.request("vcxo_dac_sclk") 
+        mosi = self.platform.request("vcxo_dac_din") 
+        syncn = [
+            self.platform.request("vcxo_dac1_sync_n"),
+            self.platform.request("vcxo_dac2_sync_n")
+        ]
+        ncs = Signal()
 
-        # phy = DacSpi(sclk, mosi, ncs)
-        # self.submodules += phy
-        # self.comb += [s.eq(ncs) for s in syncn]
+        phy = DacSpi(sclk, mosi, ncs)
+        self.submodules += phy
+        self.comb += [s.eq(ncs) for s in syncn]
 
     def add_fmc(self, fmc_idx):        
         FmcAdc100M10b16chaTdc.add_std(self, fmc_idx, iostd_single, iostd_diff, with_trig=True)
@@ -95,7 +105,6 @@ class AfckTdc(StandaloneBase):
         
     def add_adc(self, fmc_idx, adc_idx):
         prefix = f"fmc{fmc_idx}_adc{adc_idx}"
-        cd_renamer = ClockDomainsRenamer({"dclk": f"{prefix}_dclk"})
         phy = getattr(self, f"{prefix}_phy")
 
         for channel in range(9):
@@ -104,7 +113,7 @@ class AfckTdc(StandaloneBase):
                 {"signal": trigger, "label": f"{prefix}_daq{channel}"}
             )
 
-            daq = cd_renamer(CircularDAQ(
+            daq = ClockDomainsRenamer({"dclk": f"{prefix}_dclk"})(CircularDAQ(
                 data_i=phy.data_o[channel],
                 stb_i=1,
                 trigger_rio_phy=trigger,
@@ -115,9 +124,13 @@ class AfckTdc(StandaloneBase):
                 channel=rtio.Channel.from_phy(daq, ififo_depth=self.adc_daq_samples), 
                 device_id=f"{prefix}_daq{channel}",
                 module="elhep_cores.coredevice.circular_daq",
-                class_name="CircularDaq")
+                class_name="CircularDaq",
+                arguments={
+                    "data_width": 10,
+                    "trigger_cnt_width": 4
+                })
             
-            baseline_tg = cd_renamer(RtioBaselineTriggerGenerator(
+            baseline_tg = ClockDomainsRenamer({"sys": f"{prefix}_dclk"})(RtioBaselineTriggerGenerator(
                 data=phy.data_o[channel],
                 name=f"{prefix}_daq{channel}_baseline_tg"
             ))
@@ -134,7 +147,6 @@ class AfckTdc(StandaloneBase):
 
     def add_tdc(self, fmc_idx, tdc_idx):
         prefix = f"fmc{fmc_idx}_tdc{tdc_idx}"
-        cd_renamer = ClockDomainsRenamer({"dclk": f"{prefix}_dclk"})
         phy = getattr(self, f"{prefix}_phy")
 
         for channel in range(4):
@@ -143,7 +155,7 @@ class AfckTdc(StandaloneBase):
                 {"signal": trigger, "label": f"{prefix}_daq{channel}"}
             )
 
-            daq = cd_renamer(CircularDAQ(
+            daq = ClockDomainsRenamer({"dclk": f"{prefix}_dclk"})(CircularDAQ(
                 data_i=phy.data_o[channel][:32-self.trigger_cnt_width],
                 stb_i=phy.data_stb_o[channel],
                 trigger_rio_phy=trigger,
@@ -154,7 +166,11 @@ class AfckTdc(StandaloneBase):
                 channel=rtio.Channel.from_phy(daq, ififo_depth=self.tdc_daq_samples), 
                 device_id=f"{prefix}_daq{channel}",
                 module="elhep_cores.coredevice.circular_daq",
-                class_name="CircularDaq")
+                class_name="CircularDaq",
+                arguments={
+                    "data_width": 22,
+                    "trigger_cnt_width": 4
+                })
    
 
 def mcord_argdict(args):
