@@ -62,22 +62,18 @@ class TestComm(EnvExperiment):
         self.core.break_realtime()
         self.fmc1.adc[0].phy.adclk_delay_value.write_rt(val)
         
+    def read_tdc(self, tdc):
+        self.fmc1.tdc[tdc].read_results()
+        results = self.fmc1.tdc[tdc].spi_readout
+        print(f"TDC: {tdc}")
+        print("="*60)
+        for ch in range(4):
+            ref_idx = results[ch*6+0] << 16 | results[ch*6+1] << 8 | results[ch*6+2]
+            stop =    results[ch*6+3] << 16 | results[ch*6+4] << 8 | results[ch*6+5]
+            print(f"CH{ch} REF IDX: {ref_idx} STOP: {stop}")
+        print()
+
     def run(self):
-        self.initialize()
-        self.get_frequency(self.fmc1, "clk0")
-        self.get_frequency(self.fmc1, "clk1")
-        self.get_frequency(self.fmc1, "adc0_lclk")
-        self.get_frequency(self.fmc1, "adc1_lclk")
-
-        # self.fmc1_tdc1_ch4_baseline_tg.offset_level.write(0xFA)
-        # self.fmc1_cfd_offset_dac1.set_mu(6, 0xF00)
-
-        for i in range(8):
-            self.fmc1_cfd_offset_dac0.set_mu(i, 0xFFF//3)
-            self.fmc1_cfd_offset_dac1.set_mu(i, 0xFFF//3)
-
-        for i in range(4):
-            self.fmc1.tdc[i].initialize()
-            self.fmc1.tdc[i].disable_lvds_test_pattern()
-            self.fmc1.tdc[i].start_measurement()         
-
+        while True:
+            for i in range(4):
+                self.fmc1.tdc[i].start_measurement()       

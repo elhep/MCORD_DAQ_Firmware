@@ -23,8 +23,8 @@ device_db = {
         "module": "elhep_cores.coredevice.dac7578",
         "class": "DAC7578",
         "arguments": {
-            "bus": 1,
-            "address": 72
+            "busno": 0,
+            "address": 72 << 1
         }
     },
     "fmc1_cfd_offset_dac1": {
@@ -32,8 +32,8 @@ device_db = {
         "module": "elhep_cores.coredevice.dac7578",
         "class": "DAC7578",
         "arguments": {
-            "bus": 1,
-            "address": 73
+            "busno": 0,
+            "address": 73 << 1
         }
     },
     "fmc1_tdc_dis0": {

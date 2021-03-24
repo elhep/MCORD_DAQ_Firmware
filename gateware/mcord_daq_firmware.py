@@ -56,27 +56,73 @@ class AfckTdc(StandaloneBase):
                 class_name="TriggerController")
 
         if self.with_ila:
+            def adc_baseline_tg_debug(fmc, adc, daq):
+                prefix = f"fmc{fmc}_adc{adc}_daq{daq}"
+                baseline_tg = getattr(self, f"{prefix}_baseline_tg")
+                return [
+                    ILAProbe(baseline_tg.trigger_re, f"{prefix}_trigger_re"),
+                    ILAProbe(baseline_tg.trigger_fe, f"{prefix}_trigger_fe"),
+                    ILAProbe(baseline_tg.trigger_level_offset, f"{prefix}_trigger_level_offset"),
+                    ILAProbe(baseline_tg.trigger_level, f"{prefix}_trigger_level")
+                ]
+
+            def adc_daq_debug(fmc, adc, daq):
+                prefix = f"fmc{fmc}_adc{adc}_daq{daq}"
+                daq = getattr(self, f"{prefix}")
+                return [
+                    ILAProbe(daq.trigger_dclk, f"{prefix}_trigger"),
+                    ILAProbe(daq.posttrigger_dclk, f"{prefix}_posttrigger"),
+                    ILAProbe(daq.pretrigger_dclk, f"{prefix}_pretrigger")                    
+                ]
+
+            def adc_phy_debug(fmc, adc, channels):
+                phy = getattr(self, f"fmc{fmc}_adc{adc}_phy")
+                prefix = f"fmc{fmc}_adc{adc}_phy"
+                return [
+                    *([ILAProbe(phy.data_o[c], f"{prefix}_data{c}") for c in channels]),
+                    ILAProbe(phy.bitslip_done, f"{prefix}_bitslip_done")
+                ]
+
+            def tdc_phy_debug(fmc, tdc, channels):
+                phy = getattr(self, f"fmc{fmc}_tdc{tdc}_phy")
+                prefix = f"fmc{fmc}_tdc{tdc}_phy"
+                return [
+                    *([ILAProbe(phy.phy_channels[c].data_o, f"{prefix}_data{c}") for c in channels]),
+                    *([ILAProbe(phy.phy_channels[c].stb_o, f"{prefix}_stb{c}") for c in channels]),
+                    *([ILAProbe(phy.phy_channels[c].frame_start, f"{prefix}_frame_start{c}") for c in channels]),
+                    *([ILAProbe(phy.phy_channels[c].csr.frame_length, f"{prefix}_frame_length{c}") for c in channels])
+                ]
+
+            def tdc_daq_debug(fmc, tdc, daq):
+                prefix = f"fmc{fmc}_tdc{tdc}_daq{daq}"
+                daq = getattr(self, f"{prefix}")
+                return [
+                    ILAProbe(daq.trigger_dclk, f"{prefix}_trigger"),
+                    ILAProbe(daq.posttrigger_dclk, f"{prefix}_posttrigger"),
+                    ILAProbe(daq.pretrigger_dclk, f"{prefix}_pretrigger")                    
+                ]
+
+            def trigger_controller_debug(channels):
+                return [
+                    *([ILAProbe(s, f"trigger_{l}") for s, l in zip(self.trigger_controller.trigger_channel_signals, self.trigger_controller.trigger_channel_labels)]),
+                    *([ILAProbe(self.trigger_controller.trigger_matrix[c], f"trigger_matrix_{c}") for c in channels]),
+                    *([ILAProbe(s, f"sw_trigger_{idx}") for idx, s in enumerate(self.trigger_controller.sw_trigger_signals)])
+                ]             
+
             print("Building with ILA")
             self.submodules += [
-                ILAProbe(self.fmc1_adc0_daq0_baseline_tg.trigger_re, "fmc1_adc0_daq0_trigger_re"),
-                ILAProbe(self.fmc1_adc0_daq0_baseline_tg.trigger_fe, "fmc1_adc0_daq0_trigger_fe"),
-                ILAProbe(self.fmc1_adc0_daq0_baseline_tg.trigger_level_offset, "fmc1_adc0_daq0_trigger_level_offset"),
-                ILAProbe(self.fmc1_adc0_daq0_baseline_tg.trigger_level, "fmc1_adc0_daq0_trigger_level"),
-
-                ILAProbe(self.fmc1_adc0_phy.data_o[0], "fmc1_adc0_phy_data0"),
-                ILAProbe(self.fmc1_adc0_phy.data_o[8], "fmc1_adc0_phy_data8"),
-                ILAProbe(self.fmc1_adc0_phy.bitslip_done, "fmc1_adc0_phy_bitslip_done"),                
-                ILAProbe(self.fmc1_adc0_daq0.trigger_dclk, "fmc1_adc0_daq0_trigger"),
-                ILAProbe(self.fmc1_adc0_daq0.posttrigger_dclk, "fmc1_adc0_daq0_posttrigger"),
-                ILAProbe(self.fmc1_adc0_daq0.pretrigger_dclk, "fmc1_adc0_daq0_pretrigger"),
-
-                ILAProbe(self.fmc1_tdc0_phy.phy_channels[0].data_o, "fmc1_tdc0_phy_data0"),
-                ILAProbe(self.fmc1_tdc0_phy.phy_channels[0].stb_o, "fmc1_tdc0_phy_stb0"),
-                ILAProbe(self.fmc1_tdc0_phy.phy_channels[0].frame_start, "fmc1_tdc0_phy_frame_start0"),
-                ILAProbe(self.fmc1_tdc0_phy.phy_channels[0].csr.frame_length, "fmc1_tdc0_phy_frame_length0"),
-                ILAProbe(self.fmc1_tdc0_daq0.trigger_dclk, "fmc1_tdc0_daq0_trigger"),
-                ILAProbe(self.fmc1_tdc0_daq0.posttrigger_dclk, "fmc1_tdc0_daq0_posttrigger"),
-                ILAProbe(self.fmc1_tdc0_daq0.pretrigger_dclk, "fmc1_tdc0_daq0_pretrigger"),
+                *(adc_phy_debug(1, 1, [4, 5])),
+                *(tdc_phy_debug(1, 0, [0, 1, 2, 3])),
+                *(tdc_phy_debug(1, 1, [0, 1, 2, 3])),
+                *(tdc_phy_debug(1, 2, [0, 1, 2, 3])),
+                *(tdc_phy_debug(1, 3, [0, 1, 2, 3])),
+                *(adc_daq_debug(1, 1, 4)),
+                *(adc_daq_debug(1, 1, 5)),
+                *(adc_baseline_tg_debug(1, 1, 4)),
+                *(adc_baseline_tg_debug(1, 1, 5)),
+                *(tdc_daq_debug(1, 3, 3)),
+                *(tdc_daq_debug(1, 3, 2)),
+                *(trigger_controller_debug([13, 14, 32,33]))
             ]
             debug_clock = self.crg.cd_sys.clk
             add_xilinx_ila(target=self, debug_clock=debug_clock, output_dir=self.output_dir, depth=2048)
