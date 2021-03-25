@@ -76,4 +76,6 @@ class TestComm(EnvExperiment):
     def run(self):
         while True:
             for i in range(4):
-                self.fmc1.tdc[i].start_measurement()       
+                print(f"TDC {i}: ", end="")
+                self.fmc1.tdc[i].read_results()
+                print( self.fmc1.tdc[i].result_readout)    

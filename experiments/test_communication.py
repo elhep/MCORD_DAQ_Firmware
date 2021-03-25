@@ -62,6 +62,12 @@ class TestComm(EnvExperiment):
         self.core.break_realtime()
         self.fmc1.adc[0].phy.adclk_delay_value.write_rt(val)
         
+    @kernel
+    def start_measurement(self):
+        self.core.break_realtime()
+        for i in range(4):
+            self.fmc1.tdc[i].start_measurement()
+    
     def run(self):
         self.initialize()
         self.get_frequency(self.fmc1, "clk0")
@@ -76,8 +82,11 @@ class TestComm(EnvExperiment):
             self.fmc1_cfd_offset_dac0.set_mu(i, 0xFFF//3)
             self.fmc1_cfd_offset_dac1.set_mu(i, 0xFFF//3)
 
-        for i in range(4):
-            self.fmc1.tdc[i].initialize()
-            self.fmc1.tdc[i].disable_lvds_test_pattern()
-            self.fmc1.tdc[i].start_measurement()         
+        # for i in range(4):
+            # self.fmc1.tdc[i].initialize()
+            # self.fmc1.tdc[i].disable_lvds_test_pattern()
+            # self.fmc1.tdc[i].start_measurement()
+            # 
+
+        
 
