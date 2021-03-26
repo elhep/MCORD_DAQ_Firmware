@@ -82,11 +82,7 @@ class TestComm(EnvExperiment):
             self.fmc1_cfd_offset_dac0.set_mu(i, 0xFFF//3)
             self.fmc1_cfd_offset_dac1.set_mu(i, 0xFFF//3)
 
-        # for i in range(4):
-            # self.fmc1.tdc[i].initialize()
-            # self.fmc1.tdc[i].disable_lvds_test_pattern()
-            # self.fmc1.tdc[i].start_measurement()
-            # 
+        self.start_measurement()
 
         
 
