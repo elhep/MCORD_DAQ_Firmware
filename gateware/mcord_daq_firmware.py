@@ -4,6 +4,7 @@ import os
 from migen import *
 from artiq.build_soc import build_artiq_soc
 from artiq.gateware import rtio
+from artiq.gateware.rtio.phy.ttl_simple import Output
 
 from misoc.integration.builder import builder_args, builder_argdict
 from misoc.cores import uart
@@ -85,13 +86,23 @@ class AfckTdc(StandaloneBase):
     def add_fmc(self, fmc_idx):        
         FmcAdc100M10b16chaTdc.add_std(self, fmc_idx, iostd_single, iostd_diff, with_trig=True)
 
+        # Common trigger reset
+        trigger_reset_rio_phy = Signal()
+        phy = Output(trigger_reset_rio_phy)
+        self.submodules += phy
+        self.add_rtio_channels(
+                channel=rtio.Channel.from_phy(phy), 
+                device_id=f"fmc{fmc_idx}_trigger_reset",
+                module="artiq.coredevice.ttl",
+                class_name="TTLOut")
+
         for adc_idx in range(2):
-            self.add_adc(fmc_idx, adc_idx)
+            self.add_adc(fmc_idx, adc_idx, trigger_reset_rio_phy)
         
         for tdc_idx in range(4):
-            self.add_tdc(fmc_idx, tdc_idx)
+            self.add_tdc(fmc_idx, tdc_idx, trigger_reset_rio_phy)
         
-    def add_adc(self, fmc_idx, adc_idx):
+    def add_adc(self, fmc_idx, adc_idx, trigger_reset_rio_phy):
         prefix = f"fmc{fmc_idx}_adc{adc_idx}"
         phy = getattr(self, f"{prefix}_phy")
 
@@ -105,6 +116,7 @@ class AfckTdc(StandaloneBase):
                 data_i=phy.data_o[channel],
                 stb_i=1,
                 trigger_rio_phy=trigger,
+                trigger_reset_rio_phy=trigger_reset_rio_phy,
                 circular_buffer_length=self.adc_daq_samples
             ))
             setattr(self.submodules, f"{prefix}_daq{channel}", daq)
@@ -133,7 +145,7 @@ class AfckTdc(StandaloneBase):
                     "regs": baseline_tg.csr.regs
             })
 
-    def add_tdc(self, fmc_idx, tdc_idx):
+    def add_tdc(self, fmc_idx, tdc_idx, trigger_reset_rio_phy):
         prefix = f"fmc{fmc_idx}_tdc{tdc_idx}"
         phy = getattr(self, f"{prefix}_phy")
 
@@ -147,6 +159,7 @@ class AfckTdc(StandaloneBase):
                 data_i=phy.data_o[channel][:32-self.trigger_cnt_width],
                 stb_i=phy.data_stb_o[channel],
                 trigger_rio_phy=trigger,
+                trigger_reset_rio_phy=trigger_reset_rio_phy,
                 circular_buffer_length=self.tdc_daq_samples
             ))
             setattr(self.submodules, f"{prefix}_daq{channel}", daq)
