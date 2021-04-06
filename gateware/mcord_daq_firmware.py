@@ -11,8 +11,8 @@ from misoc.targets.afck1v1 import soc_afck1v1_argdict, soc_afck1v1_args
 
 from elhep_cores.cores.fmc_adc100M_10B_tdc_16cha import FmcAdc100M10b16chaTdc
 from elhep_cores.cores.xilinx_ila import ILAProbeAsync, ILAProbe, add_xilinx_ila, xilinx_ila_args
-from elhep_cores.cores.trigger_controller.trigger_generators import RtioBaselineTriggerGenerator
-from elhep_cores.cores.trigger_controller.trigger_controller import RtioTriggerController
+from elhep_cores.cores.trigger_controller.trigger_generators import RtioBaselineTriggerGenerator, RtioTriggerGenerator
+from gateware.trigger_controller.trigger_controller import RtioTriggerController
 
 from elhep_cores.targets.afck1v1 import StandaloneBase, iostd_single, iostd_diff
 from elhep_cores.cores.circular_daq.circular_daq import CircularDAQ
@@ -43,91 +43,9 @@ class AfckTdc(StandaloneBase):
         if self.with_fmc2:
             self.add_fmc(2)
 
-        self.submodules.trigger_controller = RtioTriggerController(
-            trigger_generators=self.trigger_generators,
-            trigger_channels=self.trigger_channels,
-            rtlink_triggers_no=4,
-            signal_delay=23
-        )
-        self.add_rtio_channels(
-                channel=rtio.Channel.from_phy(self.trigger_controller), 
-                device_id=f"trigger_controller",
-                module="elhep_cores.coredevice.trigger_controller",
-                class_name="TriggerController")
-
         if self.with_ila:
-            def adc_baseline_tg_debug(fmc, adc, daq):
-                prefix = f"fmc{fmc}_adc{adc}_daq{daq}"
-                baseline_tg = getattr(self, f"{prefix}_baseline_tg")
-                return [
-                    ILAProbe(baseline_tg.trigger_re, f"{prefix}_trigger_re"),
-                    ILAProbe(baseline_tg.trigger_fe, f"{prefix}_trigger_fe"),
-                    ILAProbe(baseline_tg.trigger_level_offset, f"{prefix}_trigger_level_offset"),
-                    ILAProbe(baseline_tg.trigger_level, f"{prefix}_trigger_level")
-                ]
-
-            def adc_daq_debug(fmc, adc, daq):
-                prefix = f"fmc{fmc}_adc{adc}_daq{daq}"
-                daq = getattr(self, f"{prefix}")
-                return [
-                    ILAProbe(daq.trigger_dclk, f"{prefix}_trigger"),
-                    ILAProbe(daq.posttrigger_dclk, f"{prefix}_posttrigger"),
-                    ILAProbe(daq.pretrigger_dclk, f"{prefix}_pretrigger")                    
-                ]
-
-            def adc_phy_debug(fmc, adc, channels):
-                phy = getattr(self, f"fmc{fmc}_adc{adc}_phy")
-                prefix = f"fmc{fmc}_adc{adc}_phy"
-                return [
-                    *([ILAProbe(phy.data_o[c], f"{prefix}_data{c}") for c in channels]),
-                    ILAProbe(phy.bitslip_done, f"{prefix}_bitslip_done")
-                ]
-
-            def tdc_phy_debug(fmc, tdc, channels):
-                phy = getattr(self, f"fmc{fmc}_tdc{tdc}_phy")
-                prefix = f"fmc{fmc}_tdc{tdc}_phy"
-                return [
-                    *([ILAProbe(phy.phy_channels[c].data_o, f"{prefix}_data{c}") for c in channels]),
-                    *([ILAProbe(phy.phy_channels[c].stb_o, f"{prefix}_stb{c}") for c in channels]),
-                    *([ILAProbe(phy.phy_channels[c].frame_start, f"{prefix}_frame_start{c}") for c in channels]),
-                    *([ILAProbe(phy.phy_channels[c].csr.frame_length, f"{prefix}_frame_length{c}") for c in channels])
-                ]
-
-            def tdc_daq_debug(fmc, tdc, daq):
-                prefix = f"fmc{fmc}_tdc{tdc}_daq{daq}"
-                daq = getattr(self, f"{prefix}")
-                return [
-                    ILAProbe(daq.trigger_dclk, f"{prefix}_trigger"),
-                    ILAProbe(daq.posttrigger_dclk, f"{prefix}_posttrigger"),
-                    ILAProbe(daq.pretrigger_dclk, f"{prefix}_pretrigger")                    
-                ]
-
-            def trigger_controller_debug(channels):
-                return [
-                    *([ILAProbe(s, f"trigger_{l}") for s, l in zip(self.trigger_controller.trigger_channel_signals, self.trigger_controller.trigger_channel_labels)]),
-                    *([ILAProbe(self.trigger_controller.trigger_matrix[c], f"trigger_matrix_{c}") for c in channels]),
-                    *([ILAProbe(s, f"sw_trigger_{idx}") for idx, s in enumerate(self.trigger_controller.sw_trigger_signals)])
-                ]             
-
-            print("Building with ILA")
-            self.submodules += [
-                *(adc_phy_debug(1, 1, [4, 5])),
-                *(tdc_phy_debug(1, 0, [0, 1, 2, 3])),
-                *(tdc_phy_debug(1, 1, [0, 1, 2, 3])),
-                *(tdc_phy_debug(1, 2, [0, 1, 2, 3])),
-                *(tdc_phy_debug(1, 3, [0, 1, 2, 3])),
-                *(adc_daq_debug(1, 1, 4)),
-                *(adc_daq_debug(1, 1, 5)),
-                *(adc_baseline_tg_debug(1, 1, 4)),
-                *(adc_baseline_tg_debug(1, 1, 5)),
-                *(tdc_daq_debug(1, 3, 3)),
-                *(tdc_daq_debug(1, 3, 2)),
-                *(trigger_controller_debug([13, 14, 32,33]))
-            ]
-            debug_clock = self.crg.cd_sys.clk
-            add_xilinx_ila(target=self, debug_clock=debug_clock, output_dir=self.output_dir, depth=2048)
-
-
+            self.add_ila()
+            
         sclk = self.platform.request("vcxo_dac_sclk") 
         mosi = self.platform.request("vcxo_dac_din") 
         syncn = [
@@ -139,6 +57,30 @@ class AfckTdc(StandaloneBase):
         phy = DacSpi(sclk, mosi, ncs)
         self.submodules += phy
         self.comb += [s.eq(ncs) for s in syncn]
+
+    def add_triggering(self, sw_triggers=4):
+
+        for i in range(sw_triggers):
+            trigger_channel = RtioTriggerGenerator(f"sw_trigger_{i}")
+            self.submodules += trigger_channel
+            self.add_rtio_channels(
+                channel=rtio.Channel.from_phy(trigger_channel),
+                device_id=f"sw_trigger_{i}",
+                module="elhep_cores.coredevice.trigger_generator",
+                class_name="RtioTriggerGenerator"
+            )
+
+        self.submodules.trigger_controller = RtioTriggerController(
+            trigger_generators=self.trigger_generators,
+            trigger_channels=self.trigger_channels,
+            rtlink_triggers_no=4,
+            signal_delay=23
+        )
+        self.add_rtio_channels(
+                channel=rtio.Channel.from_phy(self.trigger_controller), 
+                device_id=f"trigger_controller",
+                module="elhep_cores.coredevice.trigger_controller",
+                class_name="TriggerController")
 
     def add_fmc(self, fmc_idx):        
         FmcAdc100M10b16chaTdc.add_std(self, fmc_idx, iostd_single, iostd_diff, with_trig=True)
@@ -217,6 +159,79 @@ class AfckTdc(StandaloneBase):
                     "data_width": 22,
                     "trigger_cnt_width": 4
                 })
+
+    def add_ila(self):
+
+        def adc_baseline_tg_debug(fmc, adc, daq):
+            prefix = f"fmc{fmc}_adc{adc}_daq{daq}"
+            baseline_tg = getattr(self, f"{prefix}_baseline_tg")
+            return [
+                ILAProbe(baseline_tg.trigger_re, f"{prefix}_trigger_re"),
+                ILAProbe(baseline_tg.trigger_fe, f"{prefix}_trigger_fe"),
+                # ILAProbe(baseline_tg.trigger_level_offset, f"{prefix}_trigger_level_offset"),
+                ILAProbe(baseline_tg.trigger_level, f"{prefix}_trigger_level")
+            ]
+
+        def adc_daq_debug(fmc, adc, daq):
+            prefix = f"fmc{fmc}_adc{adc}_daq{daq}"
+            daq = getattr(self, f"{prefix}")
+            return [
+                ILAProbe(daq.trigger_dclk, f"{prefix}_trigger"),
+                ILAProbe(daq.posttrigger_dclk, f"{prefix}_posttrigger"),
+                ILAProbe(daq.pretrigger_dclk, f"{prefix}_pretrigger")                    
+            ]
+
+        def adc_phy_debug(fmc, adc, channels):
+            phy = getattr(self, f"fmc{fmc}_adc{adc}_phy")
+            prefix = f"fmc{fmc}_adc{adc}_phy"
+            return [
+                *([ILAProbe(phy.data_o[c], f"{prefix}_data{c}") for c in channels]),
+                ILAProbe(phy.bitslip_done, f"{prefix}_bitslip_done")
+            ]
+
+        def tdc_phy_debug(fmc, tdc, channels):
+            phy = getattr(self, f"fmc{fmc}_tdc{tdc}_phy")
+            prefix = f"fmc{fmc}_tdc{tdc}_phy"
+            return [
+                *([ILAProbe(phy.phy_channels[c].data_o, f"{prefix}_data{c}") for c in channels]),
+                *([ILAProbe(phy.phy_channels[c].stb_o, f"{prefix}_stb{c}") for c in channels]),
+                *([ILAProbe(phy.phy_channels[c].frame_start, f"{prefix}_frame_start{c}") for c in channels]),
+                *([ILAProbe(phy.phy_channels[c].csr.frame_length, f"{prefix}_frame_length{c}") for c in channels])
+            ]
+
+        def tdc_daq_debug(fmc, tdc, daq):
+            prefix = f"fmc{fmc}_tdc{tdc}_daq{daq}"
+            daq = getattr(self, f"{prefix}")
+            return [
+                ILAProbe(daq.trigger_dclk, f"{prefix}_trigger"),
+                ILAProbe(daq.posttrigger_dclk, f"{prefix}_posttrigger"),
+                ILAProbe(daq.pretrigger_dclk, f"{prefix}_pretrigger")                    
+            ]
+
+        def trigger_controller_debug(channels):
+            return [
+                *([ILAProbe(s, f"trigger_{l}") for s, l in zip(self.trigger_controller.trigger_channel_signals, self.trigger_controller.trigger_channel_labels)]),
+                *([ILAProbe(self.trigger_controller.trigger_matrix[c], f"trigger_matrix_{c}") for c in channels]),
+                *([ILAProbe(s, f"sw_trigger_{idx}") for idx, s in enumerate(self.trigger_controller.sw_trigger_signals)])
+            ]             
+
+        print("Building with ILA")
+        self.submodules += [
+            *(adc_phy_debug(1, 1, [4, 5])),
+            *(tdc_phy_debug(1, 0, [0, 1, 2, 3])),
+            *(tdc_phy_debug(1, 1, [0, 1, 2, 3])),
+            *(tdc_phy_debug(1, 2, [0, 1, 2, 3])),
+            *(tdc_phy_debug(1, 3, [0, 1, 2, 3])),
+            *(adc_daq_debug(1, 1, 4)),
+            *(adc_daq_debug(1, 1, 5)),
+            *(adc_baseline_tg_debug(1, 1, 4)),
+            *(adc_baseline_tg_debug(1, 1, 5)),
+            *(tdc_daq_debug(1, 3, 3)),
+            *(tdc_daq_debug(1, 3, 2)),
+            *(trigger_controller_debug([13, 14, 32,33]))
+        ]
+        debug_clock = self.crg.cd_sys.clk
+        add_xilinx_ila(target=self, debug_clock=debug_clock, output_dir=self.output_dir, depth=2048)
    
 
 def mcord_argdict(args):
