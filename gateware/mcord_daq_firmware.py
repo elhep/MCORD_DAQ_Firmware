@@ -12,7 +12,7 @@ from misoc.targets.afck1v1 import soc_afck1v1_argdict, soc_afck1v1_args
 
 from elhep_cores.cores.fmc_adc100M_10B_tdc_16cha import FmcAdc100M10b16chaTdc
 from elhep_cores.cores.xilinx_ila import ILAProbeAsync, ILAProbe, add_xilinx_ila, xilinx_ila_args
-from elhep_cores.cores.trigger_controller.trigger_generators import RtioBaselineTriggerGenerator, RtioTriggerGenerator
+from elhep_cores.cores.trigger_generators import RtioBaselineTriggerGenerator, RtioTriggerGenerator
 from gateware.trigger_controller.trigger_controller import RtioTriggerController
 
 from elhep_cores.targets.afck1v1 import StandaloneBase, iostd_single, iostd_diff
@@ -38,15 +38,19 @@ class AfckTdc(StandaloneBase):
         
     def add_design(self):
         assert self.with_fmc1 or self.with_fmc2, "At least one FMC must be enabled"
+        self.add_vcxo_dac()
 
         if self.with_fmc1:
             self.add_fmc(1)
         if self.with_fmc2:
             self.add_fmc(2)
 
+        self.add_triggering(sw_triggers=16)                
+
         if self.with_ila:
             self.add_ila()
-            
+
+    def add_vcxo_dac(self):
         sclk = self.platform.request("vcxo_dac_sclk") 
         mosi = self.platform.request("vcxo_dac_din") 
         syncn = [
@@ -54,15 +58,15 @@ class AfckTdc(StandaloneBase):
             self.platform.request("vcxo_dac2_sync_n")
         ]
         ncs = Signal()
-
         phy = DacSpi(sclk, mosi, ncs)
         self.submodules += phy
         self.comb += [s.eq(ncs) for s in syncn]
 
     def add_triggering(self, sw_triggers=4):
-
+        sw_trigger_generators = []
         for i in range(sw_triggers):
             trigger_channel = RtioTriggerGenerator(f"sw_trigger_{i}")
+            sw_trigger_generators.append(trigger_channel)
             self.submodules += trigger_channel
             self.add_rtio_channels(
                 channel=rtio.Channel.from_phy(trigger_channel),
@@ -72,10 +76,9 @@ class AfckTdc(StandaloneBase):
             )
 
         self.submodules.trigger_controller = RtioTriggerController(
-            trigger_generators=self.trigger_generators,
+            trigger_generators=self.trigger_generators+sw_trigger_generators,
             trigger_channels=self.trigger_channels,
-            rtlink_triggers_no=4,
-            signal_delay=23
+            layout_path=os.path.join(self.output_dir, "trigger_controller_layout.json")
         )
         self.add_rtio_channels(
                 channel=rtio.Channel.from_phy(self.trigger_controller), 
@@ -190,6 +193,7 @@ class AfckTdc(StandaloneBase):
             daq = getattr(self, f"{prefix}")
             return [
                 ILAProbe(daq.trigger_dclk, f"{prefix}_trigger"),
+                ILAProbe(daq.trigger_reset_dclk, f"{prefix}_trigger_reset"),
                 ILAProbe(daq.posttrigger_dclk, f"{prefix}_posttrigger"),
                 ILAProbe(daq.pretrigger_dclk, f"{prefix}_pretrigger")                    
             ]
@@ -223,9 +227,11 @@ class AfckTdc(StandaloneBase):
 
         def trigger_controller_debug(channels):
             return [
-                *([ILAProbe(s, f"trigger_{l}") for s, l in zip(self.trigger_controller.trigger_channel_signals, self.trigger_controller.trigger_channel_labels)]),
-                *([ILAProbe(self.trigger_controller.trigger_matrix[c], f"trigger_matrix_{c}") for c in channels]),
-                *([ILAProbe(s, f"sw_trigger_{idx}") for idx, s in enumerate(self.trigger_controller.sw_trigger_signals)])
+                *([ILAProbe(s, f"trigger_{l}") for s, l in zip(self.trigger_controller.trigger_in_signals, self.trigger_controller.trigger_in_labels)]),
+                *([ILAProbe(s, f"trigger_pulse_{l}") for s, l in zip(self.trigger_controller.pulses, self.trigger_controller.trigger_in_labels)]),
+                *([ILAProbe(s, f"trigger_{l}") for s, l in zip(self.trigger_controller.trigger_out_signals, self.trigger_controller.trigger_out_labels)]),
+                *([ILAProbe(s, f"trigger_mask_{i}") for i, s in enumerate(self.trigger_controller.masks)]),
+                ILAProbe(self.trigger_controller.en_mask, "trigger_en_mask")
             ]             
 
         print("Building with ILA")
