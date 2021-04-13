@@ -1,5 +1,5 @@
 {
-    "image": "dartiq",
+    "image": "dartiq:6.0",
     "python_modules": [
         "modules/artiq",
         "modules/misoc",

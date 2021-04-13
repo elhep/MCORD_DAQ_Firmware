@@ -15,7 +15,7 @@ from elhep_cores.cores.xilinx_ila import ILAProbeAsync, ILAProbe, add_xilinx_ila
 from elhep_cores.cores.trigger_generators import RtioBaselineTriggerGenerator, RtioTriggerGenerator
 from gateware.trigger_controller.trigger_controller import RtioTriggerController
 
-from elhep_cores.targets.afck1v1 import StandaloneBase, iostd_single, iostd_diff
+from elhep_cores.targets.artiq.afck1v1 import StandaloneBase, iostd_single, iostd_diff
 from elhep_cores.cores.circular_daq.circular_daq import CircularDAQ
 from elhep_cores.cores.dac_spi import DacSpi
 
@@ -83,8 +83,11 @@ class AfckTdc(StandaloneBase):
         self.add_rtio_channels(
                 channel=rtio.Channel.from_phy(self.trigger_controller), 
                 device_id=f"trigger_controller",
-                module="elhep_cores.coredevice.trigger_controller",
-                class_name="TriggerController")
+                module="coredevice.trigger_controller",
+                class_name="TriggerController",
+                arguments={
+                    "layout": "trigger_controller_layout.json"
+                })
 
     def add_fmc(self, fmc_idx):        
         FmcAdc100M10b16chaTdc.add_std(self, fmc_idx, iostd_single, iostd_diff, with_trig=True)
@@ -141,7 +144,7 @@ class AfckTdc(StandaloneBase):
             self.trigger_generators.append(baseline_tg)
             self.add_rtio_channels(
                 channel=rtio.Channel.from_phy(baseline_tg.csr),
-                device_id=f"fmc{fmc_idx}_tdc{adc_idx}_ch{channel}_baseline_tg",
+                device_id=f"fmc{fmc_idx}_adc{adc_idx}_ch{channel}_baseline_tg",
                 module="elhep_cores.coredevice.rtlink_csr",
                 class_name="RtlinkCsr",
                 arguments={
@@ -230,21 +233,21 @@ class AfckTdc(StandaloneBase):
                 *([ILAProbe(s, f"trigger_{l}") for s, l in zip(self.trigger_controller.trigger_in_signals, self.trigger_controller.trigger_in_labels)]),
                 *([ILAProbe(s, f"trigger_pulse_{l}") for s, l in zip(self.trigger_controller.pulses, self.trigger_controller.trigger_in_labels)]),
                 *([ILAProbe(s, f"trigger_{l}") for s, l in zip(self.trigger_controller.trigger_out_signals, self.trigger_controller.trigger_out_labels)]),
-                *([ILAProbe(s, f"trigger_mask_{i}") for i, s in enumerate(self.trigger_controller.masks)]),
-                ILAProbe(self.trigger_controller.en_mask, "trigger_en_mask")
+                # *([ILAProbe(s, f"trigger_mask_{i}") for i, s in enumerate(self.trigger_controller.masks)]),
+                # ILAProbe(self.trigger_controller.en_mask, "trigger_en_mask")
             ]             
 
         print("Building with ILA")
         self.submodules += [
-            *(adc_phy_debug(1, 1, [4, 5])),
+            # *(adc_phy_debug(1, 1, [4, 5])),
             *(tdc_phy_debug(1, 0, [0, 1, 2, 3])),
             *(tdc_phy_debug(1, 1, [0, 1, 2, 3])),
             *(tdc_phy_debug(1, 2, [0, 1, 2, 3])),
             *(tdc_phy_debug(1, 3, [0, 1, 2, 3])),
-            *(adc_daq_debug(1, 1, 4)),
-            *(adc_daq_debug(1, 1, 5)),
-            *(adc_baseline_tg_debug(1, 1, 4)),
-            *(adc_baseline_tg_debug(1, 1, 5)),
+            # *(adc_daq_debug(1, 1, 4)),
+            # *(adc_daq_debug(1, 1, 5)),
+            # *(adc_baseline_tg_debug(1, 1, 4)),
+            # *(adc_baseline_tg_debug(1, 1, 5)),
             *(tdc_daq_debug(1, 3, 3)),
             *(tdc_daq_debug(1, 3, 2)),
             *(trigger_controller_debug([13, 14, 32,33]))
