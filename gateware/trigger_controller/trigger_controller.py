@@ -11,7 +11,7 @@ from migen.fhdl import verilog
 
 from artiq.gateware.rtio import rtlink
 
-from elhep_cores.cores.trigger_controller.trigger_generators import TriggerGenerator
+from elhep_cores.cores.trigger_generators import TriggerGenerator
 from elhep_cores.simulation.common import update_tb
 
 

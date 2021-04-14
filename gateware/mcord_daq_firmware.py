@@ -8,7 +8,7 @@ from artiq.gateware.rtio.phy.ttl_simple import Output
 
 from misoc.integration.builder import builder_args, builder_argdict
 from misoc.cores import uart
-from misoc.targets.afck1v1 import soc_afck1v1_argdict, soc_afck1v1_args
+from elhep_cores.targets.misoc.afck1v1 import soc_afck1v1_argdict, soc_afck1v1_args
 
 from elhep_cores.cores.fmc_adc100M_10B_tdc_16cha import FmcAdc100M10b16chaTdc
 from elhep_cores.cores.xilinx_ila import ILAProbeAsync, ILAProbe, add_xilinx_ila, xilinx_ila_args

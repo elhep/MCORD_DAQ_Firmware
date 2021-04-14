@@ -24,7 +24,7 @@ device_db = {
         "class": "DAC7578",
         "arguments": {
             "busno": 0,
-            "address": 72 << 1
+            "address": 144
         }
     },
     "fmc1_cfd_offset_dac1": {
@@ -33,7 +33,7 @@ device_db = {
         "class": "DAC7578",
         "arguments": {
             "busno": 0,
-            "address": 73 << 1
+            "address": 146
         }
     },
     "fmc1_tdc_dis0": {
@@ -859,7 +859,7 @@ device_db = {
             "channel": 48
         }
     },
-    "fmc1_tdc0_ch0_baseline_tg": {
+    "fmc1_adc0_ch0_baseline_tg": {
         "type": "local",
         "module": "elhep_cores.coredevice.rtlink_csr",
         "class": "RtlinkCsr",
@@ -883,7 +883,7 @@ device_db = {
             "channel": 50
         }
     },
-    "fmc1_tdc0_ch1_baseline_tg": {
+    "fmc1_adc0_ch1_baseline_tg": {
         "type": "local",
         "module": "elhep_cores.coredevice.rtlink_csr",
         "class": "RtlinkCsr",
@@ -907,7 +907,7 @@ device_db = {
             "channel": 52
         }
     },
-    "fmc1_tdc0_ch2_baseline_tg": {
+    "fmc1_adc0_ch2_baseline_tg": {
         "type": "local",
         "module": "elhep_cores.coredevice.rtlink_csr",
         "class": "RtlinkCsr",
@@ -931,7 +931,7 @@ device_db = {
             "channel": 54
         }
     },
-    "fmc1_tdc0_ch3_baseline_tg": {
+    "fmc1_adc0_ch3_baseline_tg": {
         "type": "local",
         "module": "elhep_cores.coredevice.rtlink_csr",
         "class": "RtlinkCsr",
@@ -955,7 +955,7 @@ device_db = {
             "channel": 56
         }
     },
-    "fmc1_tdc0_ch4_baseline_tg": {
+    "fmc1_adc0_ch4_baseline_tg": {
         "type": "local",
         "module": "elhep_cores.coredevice.rtlink_csr",
         "class": "RtlinkCsr",
@@ -979,7 +979,7 @@ device_db = {
             "channel": 58
         }
     },
-    "fmc1_tdc0_ch5_baseline_tg": {
+    "fmc1_adc0_ch5_baseline_tg": {
         "type": "local",
         "module": "elhep_cores.coredevice.rtlink_csr",
         "class": "RtlinkCsr",
@@ -1003,7 +1003,7 @@ device_db = {
             "channel": 60
         }
     },
-    "fmc1_tdc0_ch6_baseline_tg": {
+    "fmc1_adc0_ch6_baseline_tg": {
         "type": "local",
         "module": "elhep_cores.coredevice.rtlink_csr",
         "class": "RtlinkCsr",
@@ -1027,7 +1027,7 @@ device_db = {
             "channel": 62
         }
     },
-    "fmc1_tdc0_ch7_baseline_tg": {
+    "fmc1_adc0_ch7_baseline_tg": {
         "type": "local",
         "module": "elhep_cores.coredevice.rtlink_csr",
         "class": "RtlinkCsr",
@@ -1051,7 +1051,7 @@ device_db = {
             "channel": 64
         }
     },
-    "fmc1_tdc0_ch8_baseline_tg": {
+    "fmc1_adc0_ch8_baseline_tg": {
         "type": "local",
         "module": "elhep_cores.coredevice.rtlink_csr",
         "class": "RtlinkCsr",
@@ -1075,7 +1075,7 @@ device_db = {
             "channel": 66
         }
     },
-    "fmc1_tdc1_ch0_baseline_tg": {
+    "fmc1_adc1_ch0_baseline_tg": {
         "type": "local",
         "module": "elhep_cores.coredevice.rtlink_csr",
         "class": "RtlinkCsr",
@@ -1099,7 +1099,7 @@ device_db = {
             "channel": 68
         }
     },
-    "fmc1_tdc1_ch1_baseline_tg": {
+    "fmc1_adc1_ch1_baseline_tg": {
         "type": "local",
         "module": "elhep_cores.coredevice.rtlink_csr",
         "class": "RtlinkCsr",
@@ -1123,7 +1123,7 @@ device_db = {
             "channel": 70
         }
     },
-    "fmc1_tdc1_ch2_baseline_tg": {
+    "fmc1_adc1_ch2_baseline_tg": {
         "type": "local",
         "module": "elhep_cores.coredevice.rtlink_csr",
         "class": "RtlinkCsr",
@@ -1147,7 +1147,7 @@ device_db = {
             "channel": 72
         }
     },
-    "fmc1_tdc1_ch3_baseline_tg": {
+    "fmc1_adc1_ch3_baseline_tg": {
         "type": "local",
         "module": "elhep_cores.coredevice.rtlink_csr",
         "class": "RtlinkCsr",
@@ -1171,7 +1171,7 @@ device_db = {
             "channel": 74
         }
     },
-    "fmc1_tdc1_ch4_baseline_tg": {
+    "fmc1_adc1_ch4_baseline_tg": {
         "type": "local",
         "module": "elhep_cores.coredevice.rtlink_csr",
         "class": "RtlinkCsr",
@@ -1195,7 +1195,7 @@ device_db = {
             "channel": 76
         }
     },
-    "fmc1_tdc1_ch5_baseline_tg": {
+    "fmc1_adc1_ch5_baseline_tg": {
         "type": "local",
         "module": "elhep_cores.coredevice.rtlink_csr",
         "class": "RtlinkCsr",
@@ -1219,7 +1219,7 @@ device_db = {
             "channel": 78
         }
     },
-    "fmc1_tdc1_ch6_baseline_tg": {
+    "fmc1_adc1_ch6_baseline_tg": {
         "type": "local",
         "module": "elhep_cores.coredevice.rtlink_csr",
         "class": "RtlinkCsr",
@@ -1243,7 +1243,7 @@ device_db = {
             "channel": 80
         }
     },
-    "fmc1_tdc1_ch7_baseline_tg": {
+    "fmc1_adc1_ch7_baseline_tg": {
         "type": "local",
         "module": "elhep_cores.coredevice.rtlink_csr",
         "class": "RtlinkCsr",
@@ -1267,7 +1267,7 @@ device_db = {
             "channel": 82
         }
     },
-    "fmc1_tdc1_ch8_baseline_tg": {
+    "fmc1_adc1_ch8_baseline_tg": {
         "type": "local",
         "module": "elhep_cores.coredevice.rtlink_csr",
         "class": "RtlinkCsr",
@@ -1574,8 +1574,8 @@ device_db = {
         "module": "coredevice.trigger_controller",
         "class": "TriggerController",
         "arguments": {
-            "channel": 116,
-            "layout": "trigger_controller_layout.json"
+            "layout": "trigger_controller_layout.json",
+            "channel": 116
         }
     }
 }
