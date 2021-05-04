@@ -8,24 +8,24 @@ class Initialize(BaseMCORDExperiment, Experiment):
 
     cfd_offset = {
         "dac0": [
-            0xFFF//3,
-            0xFFF//3,
-            0xFFF//3,
-            0xFFF//3,
-            0xFFF//3,
-            0xFFF//3,
-            0xFFF//3,
-            0xFFF//3
+            0xFFF//2,
+            0xFFF//2,
+            0xFFF//2,
+            0xFFF//2,
+            0xFFF//2,
+            0xFFF//2,
+            0xFFF//2,
+            0xFFF//2
         ],
         "dac1": [
-            0xFFF//3,
-            0xFFF//3,
-            0xFFF//3,
-            0xFFF//3,
-            0xFFF//3,
-            0xFFF//3,
-            0xFFF//3,
-            0xFFF//3
+            0xFFF//2,
+            0xFFF//2,
+            0xFFF//2,
+            0xFFF//2,
+            0xFFF//2,
+            0xFFF//2,
+            0xFFF//2,
+            0xFFF//2
         ]
     }
 
@@ -106,11 +106,6 @@ class Initialize(BaseMCORDExperiment, Experiment):
         "fmc1_adc1_daq7": True
     }
 
-    coincidence = {
-        "fmc1_adc1_daq4": ["fmc1_adc1_daq4_baseline_tg_re", "fmc1_adc1_daq5_baseline_tg_re"],
-        "fmc1_adc0_daq0": ["fmc1_adc1_daq4_baseline_tg_re", "fmc1_adc1_daq5_baseline_tg_re"]
-    }
-
     def run(self):
         print("Initializing FMC")
         self.initialize_fmc()
@@ -126,21 +121,23 @@ class Initialize(BaseMCORDExperiment, Experiment):
             self.fmc1_cfd_offset_dac0.set_mu(i, self.cfd_offset["dac0"][i])
             self.fmc1_cfd_offset_dac1.set_mu(i, self.cfd_offset["dac1"][i])
 
-        print("Setting pulse lengths")
-        for k, v in self.pulse_length.items():
-            self.trigger_controller.set_pulse_length(k, v)
-        
-        print("Setting offset levels")
-        for k, v in self.offset_levels.items():
-            getattr(self, k).offset_level.write(int(v))
-        
-        print("Setting conincidence detection")
-        for k, v in self.coincidence.items():
-            self.trigger_controller.setup_coincidence(k, *v)
 
-        print("Setting channel enables")
-        for k, v in self.trigger_channel_enabled.items():
-            self.trigger_controller.set_trigger_state(k, v)
+
+        # print("Setting pulse lengths")
+        # for k, v in self.pulse_length.items():
+        #     self.trigger_controller.set_pulse_length(k, v)
+        
+        # print("Setting offset levels")
+        # for k, v in self.offset_levels.items():
+        #     getattr(self, k).offset_level.write(int(v))
+        
+        # print("Setting conincidence detection")
+        # for k, v in self.coincidence.items():
+        #     self.trigger_controller.setup_coincidence(k, *v)
+
+        # print("Setting channel enables")
+        # for k, v in self.trigger_channel_enabled.items():
+        #     self.trigger_controller.set_trigger_state(k, v)
 
 
         

@@ -6,6 +6,7 @@ from artiq.language.units import ns, us
 
 class BaseMCORDExperiment(HasEnvironment):
 
+
     def build(self):
         
         self.setattr_device("core")
@@ -33,11 +34,16 @@ class BaseMCORDExperiment(HasEnvironment):
             self.setattr_device(daq_name)
             self.tdc_daqs.append(getattr(self, daq_name))
 
+        self.sw_triggers = []
+        for idx in range(8):
+            sw_trigger_name = f"sw_trigger_{idx}"
+            self.setattr_device(sw_trigger_name)
+            self.sw_triggers.append(getattr(self, sw_trigger_name))
+
     @kernel
     def initialize_fmc(self):
         self.core.break_realtime()
         self.fmc1.initialize()
-
         for i in range(4):
             self.fmc1.tdc[i].start_measurement()
 

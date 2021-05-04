@@ -1,7 +1,10 @@
 **.pyc
 .Xil/**
 *.txt
-mcord_daq_fw/**
+build/**
 *.jou
 *.log
 *.str
+env/**
+**.csv
+**.pyon

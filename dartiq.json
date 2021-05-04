@@ -5,7 +5,8 @@
         "modules/misoc",
         "modules/migen",
         "modules/ELHEP_Cores",
-        "modules/liteiclink"
+        "modules/liteiclink",
+        "./"
     ],
     "copy_env_var": [
         "XILINXD_LICENSE_FILE"

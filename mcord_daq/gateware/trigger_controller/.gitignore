@@ -1,0 +1,8 @@
+test_trigger_controller/**
+!test_trigger_controller/Makefile
+!test_trigger_controller/tb_trigger_controller.py
+trigger_controller.json
+**.vcd
+test_coincidence_trigger_generator/**
+!test_coincidence_trigger_generator/Makefile
+!test_coincidence_trigger_generator/tb_coincidence_tg.py
