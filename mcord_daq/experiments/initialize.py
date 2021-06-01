@@ -116,10 +116,10 @@ class Initialize(BaseMCORDExperiment, Experiment):
         self.get_frequency(self.fmc1, "adc0_lclk")
         self.get_frequency(self.fmc1, "adc1_lclk")
 
-        print("Setting CFD offsets")
-        for i in range(8):
-            self.fmc1_cfd_offset_dac0.set_mu(i, self.cfd_offset["dac0"][i])
-            self.fmc1_cfd_offset_dac1.set_mu(i, self.cfd_offset["dac1"][i])
+        # print("Setting CFD offsets")
+        # for i in range(8):
+        #     self.fmc1_cfd_offset_dac0.set_mu(i, self.cfd_offset["dac0"][i])
+        #     self.fmc1_cfd_offset_dac1.set_mu(i, self.cfd_offset["dac1"][i])
 
 
 

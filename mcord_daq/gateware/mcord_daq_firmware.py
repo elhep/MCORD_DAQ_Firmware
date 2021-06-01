@@ -50,16 +50,50 @@ class AfckTdc(StandaloneBase):
     def add_design(self):
         self.add_vcxo_dac()
         
+        channel_offset = 0
+        detector_offset = 0
         if self.with_fmc1:
             self.add_fmc(1)
-        
+            for i in range(8):
+                self.add_detector(
+                    detector_idx=detector_offset+i, 
+                    channel_offset=channel_offset+2*i, 
+                    fmc="fmc1", 
+                    coincidence_module=f"trigger_controller_l0_{detector_offset+i}", 
+                    trigger_controller="trigger_controller"
+                )
+            detector_offset += 8
+            channel_offset += 16
+            
         if self.with_fmc2:
             self.add_fmc(2)
+            for i in range(8):
+                self.add_detector(
+                    detector_idx=detector_offset+i, 
+                    channel_offset=channel_offset+2*i, 
+                    fmc="fmc1", 
+                    coincidence_module=f"trigger_controller_l0_{detector_offset+i}", 
+                    trigger_controller="trigger_controller"
+                )
 
         self.add_triggering(sw_triggers=8)                
 
         if self.with_ila:
             self.add_ila()
+
+    def add_detector(self, detector_idx, channel_offset, fmc, coincidence_module,
+            trigger_controller="trigger_controller"):
+        self.register_coredevice(
+            device_id=f"detector_{detector_idx}",
+            module="mcord_daq.coredevice.detector",
+            class_name="Detector",
+            arguments={
+                "fmc": fmc,
+                "channel_a": channel_offset,
+                "channel_b": channel_offset+1,
+                "coincidence_module": coincidence_module
+            }
+        )
 
     def add_vcxo_dac(self):
         sclk = self.platform.request("vcxo_dac_sclk") 
