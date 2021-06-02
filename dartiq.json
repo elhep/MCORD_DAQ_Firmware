@@ -9,7 +9,6 @@
         "./"
     ],
     "copy_env_var": [
-        "XILINXD_LICENSE_FILE",
-        "COMPOSE_INTERACTIVE_NO_CLI"
+        "XILINXD_LICENSE_FILE"
     ]
 }
