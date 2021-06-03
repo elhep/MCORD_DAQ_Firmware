@@ -27,7 +27,7 @@ jobs:
 
       # Runs a single command using the runners shell
       - name: Run a one-line script
-        run: test | dartiq run "python -m mcord_daq.gateware.mcord_daq_firmware --with-fmc1 --integrated-rom-size 131072"
+        run: dartiq run "python -m mcord_daq.gateware.mcord_daq_firmware --with-fmc1 --integrated-rom-size 131072" --no-tty 
         env:
           XILINXD_LICENSE_FILE: 2101@192.168.95.253
           XILINX_PATH: /opt/Xlx/Vivado_Vitis2019.2/Vivado/2019.2
