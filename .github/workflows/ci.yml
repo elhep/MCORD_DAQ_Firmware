@@ -27,7 +27,7 @@ jobs:
 
       # Runs a single command using the runners shell
       - name: Run a one-line script
-        run: ./build_fw --no-tty 
+        run: ./build_fw --no-stdin
         env:
           XILINXD_LICENSE_FILE: 2101@192.168.95.253
           XILINX_PATH: /opt/Xlx/Vivado_Vitis2019.2/Vivado/2019.2
