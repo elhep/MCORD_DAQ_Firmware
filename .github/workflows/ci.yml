@@ -32,10 +32,11 @@ jobs:
         run: |
           whoami
           pwd
+          source /opt/Xlx/Vivado_Vitis2019.2/Vivado/2019.2/settings64.sh
           dartiq run --no-stdin "python -m mcord_daq.gateware.mcord_daq_firmware --with-fmc1 --integrated-rom-size 131072" 
         env:
           XILINXD_LICENSE_FILE: 2101@192.168.95.253
-          XILINX_VIVADO_PATH: /opt/Xlx/Vivado_Vitis2019.2/Vivado/2019.2
+          # XILINX_VIVADO_PATH: /opt/Xlx/Vivado_Vitis2019.2/Vivado/2019.2
           COMPOSE_INTERACTIVE_NO_CLI: 1
 
       # # Runs a set of commands using the runners shell
