@@ -1,6 +1,5 @@
 {
     "image": "dartiq:6.0",
-    "xilinx_vivado_path": "/opt/Xlx/Vivado_Vitis2019.2/Vivado/2019.2",
     "python_modules": [
         "modules/artiq",
         "modules/misoc",
