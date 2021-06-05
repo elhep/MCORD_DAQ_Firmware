@@ -1,0 +1,3 @@
+#!/bin/bash
+
+dartiq run --no-stdin "python -m mcord_daq.gateware.mcord_daq_firmware --with-fmc1 --integrated-rom-size 131072 $*"

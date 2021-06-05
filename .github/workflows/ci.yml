@@ -30,10 +30,8 @@ jobs:
       # Runs a single command using the runners shell
       - name: Run a one-line script
         run: |
-          whoami
-          pwd
           source /opt/Xlx/Vivado_Vitis2019.2/Vivado/2019.2/settings64.sh
-          dartiq run --no-stdin "python -m mcord_daq.gateware.mcord_daq_firmware --with-fmc1 --integrated-rom-size 131072" 
+          ./build_fw_ci
         env:
           XILINXD_LICENSE_FILE: ${{ secrets.XILINX_LICENSE_FILE}}
           # XILINX_VIVADO_PATH: /opt/Xlx/Vivado_Vitis2019.2/Vivado/2019.2

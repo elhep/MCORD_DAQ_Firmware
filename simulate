@@ -1,0 +1,3 @@
+#!/bin/bash
+
+dartiq run --no-stdin "python ./modules/ELHEP_Cores/elhep_cores/cores/dsp/baseline_avg.py $*"
