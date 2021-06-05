@@ -19,7 +19,7 @@ jobs:
   simulate:
 
     runs-on: self-hosted
-    
+
     steps:
       - uses: actions/checkout@v2
         with:
@@ -29,7 +29,7 @@ jobs:
       - name: Simulate IP Core
         run: |
           source /opt/Xlx/Vivado_Vitis2019.2/Vivado/2019.2/settings64.sh
-          ./build_fw_ci
+          ./simulate
         env:
           XILINXD_LICENSE_FILE: ${{ secrets.XILINX_LICENSE_FILE}}
 
