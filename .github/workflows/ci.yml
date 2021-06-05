@@ -15,8 +15,11 @@ on:
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
+
   simulate:
+
     runs-on: self-hosted
+    
       - uses: actions/checkout@v2
         with:
           submodules: recursive
