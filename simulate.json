@@ -1,8 +1,14 @@
 {
     "simulation_list": {
         "baseline_avg": {
-            "tb_path": "/modules/ELHEP_Cores/elhep_cores/cores/dsp/",
-            "sim_type": "Migen"
+            "does_exist": "yes",
+            "sim_type": "Migen",
+            "tb_path": "/modules/ELHEP_Cores/elhep_cores/cores/dsp/baseline_avg.py"
+        },
+        "baseline": {
+            "does_exist": "yes",
+            "sim_type": "Cocotb",
+            "tb_path": "modules/ELHEP_Cores/elhep_cores/cores/dsp/tests"
         }
     }
 }

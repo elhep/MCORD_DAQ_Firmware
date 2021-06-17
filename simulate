@@ -1,6 +1,6 @@
 #!/bin/bash
 
-python3 simulate.py
+# python3 simulate.py
 
 
-#dartiq run --no-stdin "python ./modules/ELHEP_Cores/elhep_cores/cores/dsp/baseline_avg.py $*"
+dartiq run --no-stdin "python $*"
