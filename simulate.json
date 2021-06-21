@@ -1,14 +1,42 @@
 {
     "simulation_list": {
         "baseline_avg": {
-            "does_exist": "yes",
+            "does_exist": "True",
             "sim_type": "Migen",
             "tb_path": "/modules/ELHEP_Cores/elhep_cores/cores/dsp/baseline_avg.py"
         },
         "baseline": {
-            "does_exist": "yes",
+            "does_exist": "True",
             "sim_type": "Cocotb",
             "tb_path": "modules/ELHEP_Cores/elhep_cores/cores/dsp/tests"
+        },
+        "ELHEP_Cores.cores.rtlink_csr.RtLinkCSR": {
+            "does_exist": "False"
+        },
+        "ELHEP_Cores.cores.trigger_generators.RtioCoincidenceTriggerGenerator": {
+            "does_exist": "False"
+        },
+        "ELHEP_Cores.cores.trigger_generators.RtioBaselineTriggerGenerator": {
+            "does_exist": "False"
+        },
+        "ELHEP_Cores.cores.trigger_generators.RtioTriggerGenerator": {
+            "does_exist": "False"
+        },
+        "mcord_daq.gateware.trigger_controller.trigger_controller.TriggerController": {
+            "does_exist": "False"
+        },
+        "ELHEP_Cores.cores.circular_daq.triggered_circular_buffer.TriggeredCircularBuffer": {
+            "does_exist": "False"
+        },
+        "ELHEP_Cores.cores.circular_daq.circular_daq.CircularDAQ": {
+            "does_exist": "False"
+        },
+        "ELHEP_Cores.cores.ads5296a_phy.ads5296a.ADS5296A_XS7": {
+            "does_exist": "False"
+        },
+        "ELHEP_Cores.cores.tdcgpx2_phy.tdcgpx2.TdcGpx2Phy": {
+            "does_exist": "False"
         }
+
     }
 }
