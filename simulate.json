@@ -3,12 +3,14 @@
         "baseline_avg": {
             "does_exist": "True",
             "sim_type": "Migen",
-            "tb_path": "/modules/ELHEP_Cores/elhep_cores/cores/dsp/baseline_avg.py"
+            "tb_path": "/modules/ELHEP_Cores/elhep_cores/cores/dsp/baseline_avg.py",
+            "todo_list": "1. make a list! <br> 2. make a second list"
         },
         "baseline": {
             "does_exist": "True",
             "sim_type": "Cocotb",
-            "tb_path": "modules/ELHEP_Cores/elhep_cores/cores/dsp/tests"
+            "tb_path": "modules/ELHEP_Cores/elhep_cores/cores/dsp/tests",
+            "todo_list": "Example <br>"
         },
         "ELHEP_Cores.cores.rtlink_csr.RtLinkCSR": {
             "does_exist": "False"

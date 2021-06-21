@@ -46,33 +46,37 @@ if __name__ == "__main__":
 
                 cmd = [dartiq_run_bypass + data["simulation_list"][sim_name]["tb_path"]]
 
-                subprocess.run(cmd, shell=True)
+                status = subprocess.run(cmd, shell=True)
 
-                test_output += "tb status" + " | " 
-                test_output += "tb todo" + " | " 
+                if status.returncode == 0:
+                    test_output += "Test running properly" + " | " 
+                else:
+                    test_output += "Error with the test" + " | " 
+
+                test_output += data["simulation_list"][sim_name]["todo_list"] + " | " 
 
                 test_output += "\n"
 
             elif data["simulation_list"][sim_name]["sim_type"] == "Cocotb":
                 print("INFO: Cocotb type simulation.")
 
-                # cmd = [dartiq_run_bypass + data["simulation_list"][sim_name]["tb_path"]]
+                status = subprocess.run("cd "+ data["simulation_list"][sim_name]["tb_path"] + "; " + "make > output.txt", shell=True)
 
-                # subprocess.run(cmd, shell=True)
-                subprocess.run("cd modules/ELHEP_Cores/elhep_cores/cores/dsp/tests; make", shell=True)
+                if status.returncode == 0:
+                    with open( data["simulation_list"][sim_name]["tb_path"] + "/output.txt", "r") as f:
+                        text = f.read()
 
-                # cmd.append("cd temp;")
-                # cmd.append("ls;")
+                        if "ERRORS : 0" in text:
+                            test_output += "Succesful test, 0 Errors." + " | " 
+                        else:
+                            test_output += "Errors found in the test" + " | " 
+                else:
+                    print("ERROR: Test did not run!")
+                    test_output += "Test did not run!" + " | " 
 
-                # cmd.append("dartiq run --no-stdin \"python ../modules/ELHEP_Cores/elhep_cores/cores/dsp/baseline_avg.py\"")
 
+                test_output += data["simulation_list"][sim_name]["todo_list"] + " | " 
 
-                # pwd = os.path.dirname(os.path.realpath(__file__)) 
-
-                # print(pwd)
-                # status = subprocess.run(["ls"], shell=True)
-                # status = subprocess.run(["ls; cd temp; ls; dartiq run --no-stdin \"python ../modules/ELHEP_Cores/elhep_cores/cores/dsp/baseline_avg.py\" "], shell=True)
-                # 
                 test_output += "\n"
                 
             elif data["simulation_list"][sim_name]["sim_type"] == "VerilogTB":
