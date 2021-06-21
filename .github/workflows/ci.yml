@@ -27,11 +27,16 @@ jobs:
 
 
       - name: Simulate IP Core
+        uses: actions/upload-artifact@v2
         run: |
           source /opt/Xlx/Vivado_Vitis2019.2/Vivado/2019.2/settings64.sh
           python3 simulate.py
         env:
           XILINXD_LICENSE_FILE: ${{ secrets.XILINX_LICENSE_FILE}}
+        with:
+          name: simulation_report
+          path: simulation_report.md
+
 
 
 

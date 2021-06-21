@@ -6,7 +6,7 @@ import subprocess
 
 dartiq_run_bypass = "./simulate "
 
-output_filename = "simulation_output.md"
+output_filename = "simulation_report.md"
 
 test_output = """ ## Simluation Raport
 | IP Core name | TB Exist | TB Framework | TB Status | ToDo |
@@ -43,8 +43,6 @@ if __name__ == "__main__":
                 data["simulation_list"][sim_name]["sim_type"] + " | "
             if data["simulation_list"][sim_name]["sim_type"] == "Migen":
                 print("INFO: Migen type simulation.")
-                # test_output["simulation"] = sim_name
-                # test_output[sim_name]["type"] = data["simulation_list"][sim_name]["sim_type"]
 
                 cmd = [dartiq_run_bypass + data["simulation_list"][sim_name]["tb_path"]]
 
