@@ -3,4 +3,4 @@
 # python3 simulate.py
 
 
-dartiq run --no-stdin "python $*"
+dartiq run --no-stdin "cd temp; python ../$*"
