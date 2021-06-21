@@ -6,7 +6,7 @@ import subprocess
 
 dartiq_run_bypass = "./simulate "
 
-output_filename = "simulation_report.md"
+output_filename = "simulation_report"
 
 test_output = """ ## Simluation Raport
 | IP Core name | TB Exist | TB Framework | TB Status | ToDo |
@@ -95,8 +95,12 @@ if __name__ == "__main__":
 
     # print(status)
 
-    with open(output_filename, "w") as f:
-        print("INFO: Write markdown file: " + output_filename)
+    with open(output_filename + ".md", "w") as f:
+        print("INFO: Write markdown file: " + output_filename + ".md")
+        f.write(test_output)
+
+    with open(output_filename + ".txt", "w") as f:
+        print("INFO: Write text file: " + output_filename + ".txt")
         f.write(test_output)
 
 
