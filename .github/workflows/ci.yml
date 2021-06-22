@@ -42,6 +42,7 @@ jobs:
 
 
   build:
+    needs: simulate
     runs-on: self-hosted
 
     steps:
