@@ -13,7 +13,10 @@
             "todo_list": "Example <br>"
         },
         "ELHEP_Cores.cores.rtlink_csr.RtLinkCSR": {
-            "does_exist": "False"
+            "does_exist": "True",
+            "sim_type": "Cocotb",
+            "tb_path": "modules/ELHEP_Cores/elhep_cores/cores/rtlink_csr/tests",
+            "todo_list": "Example <br>"
         },
         "ELHEP_Cores.cores.trigger_generators.RtioCoincidenceTriggerGenerator": {
             "does_exist": "False"
@@ -28,13 +31,21 @@
             "does_exist": "False"
         },
         "ELHEP_Cores.cores.circular_daq.triggered_circular_buffer.TriggeredCircularBuffer": {
-            "does_exist": "False"
+            "does_exist": "True",
+            "sim_type": "Migen",
+            "tb_path": "/modules/ELHEP_Cores/elhep_cores/cores/circular_daq/circular_daq.py",
+            "todo_list": "1. make a list! <br> 2. make a second list"
         },
         "ELHEP_Cores.cores.circular_daq.circular_daq.CircularDAQ": {
-            "does_exist": "False"
+            "does_exist": "True",
+            "sim_type": "Cocotb",
+            "tb_path": "modules/ELHEP_Cores/elhep_cores/cores/circular_daq/tests",
+            "todo_list": "Example <br>"
         },
         "ELHEP_Cores.cores.ads5296a_phy.ads5296a.ADS5296A_XS7": {
-            "does_exist": "False"
+            "does_exist": "True",
+            "sim_type": "VerilogTB",
+            "tb_path": "modules/ELHEP_Cores/elhep_cores/cores/ads5296a_phy/tests"
         },
         "ELHEP_Cores.cores.tdcgpx2_phy.tdcgpx2.TdcGpx2Phy": {
             "does_exist": "False"

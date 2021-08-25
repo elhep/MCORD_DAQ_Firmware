@@ -32,6 +32,8 @@ if __name__ == "__main__":
 
     # print(data)
 
+    error_cnt = 0
+
     if not os.path.exists("temp"):
         status = subprocess.run(["mkdir temp"], shell=True)
 
@@ -51,6 +53,8 @@ if __name__ == "__main__":
                 if status.returncode == 0:
                     test_output += "Test running properly" + " | " 
                 else:
+                    error_cnt += 1
+                    print("ERROR: Errors found in the test")
                     test_output += "Error with the test" + " | " 
 
                 test_output += data["simulation_list"][sim_name]["todo_list"] + " | " 
@@ -69,8 +73,11 @@ if __name__ == "__main__":
                         if "ERRORS : 0" in text:
                             test_output += "Succesful test, 0 Errors." + " | " 
                         else:
+                            error_cnt += 1
+                            print("ERROR: Errors found in the test")
                             test_output += "Errors found in the test" + " | " 
                 else:
+                    error_cnt += 1
                     print("ERROR: Test did not run!")
                     test_output += "Test did not run!" + " | " 
 
@@ -83,9 +90,13 @@ if __name__ == "__main__":
                 print("INFO: VerilogTB type simulation.")
 
                 
+                status = subprocess.run("cd "+ data["simulation_list"][sim_name]["tb_path"] + "; " + "make > output.txt", shell=True)
+                print(status)
+                
                 test_output += "\n"
         
             else:
+                error_cnt += 1
                 print("ERROR: Test type not supported!")
         else:
             print("INFO: No testbench prepared for: " + sim_name)
@@ -103,6 +114,8 @@ if __name__ == "__main__":
         print("INFO: Write text file: " + output_filename + ".txt")
         f.write(test_output)
 
+    if error_cnt != 0:
+        sys.exit(1)
 
 
 
