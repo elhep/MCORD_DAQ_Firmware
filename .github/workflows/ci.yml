@@ -28,7 +28,6 @@ jobs:
       - name: Simulate IP Cores
         run: |
           source /opt/Xlx/Vivado_Vitis2019.2/Vivado/2019.2/settings64.sh
-          source /opt/questa/activate_questa
           python3 simulate.py
         env:
           XILINXD_LICENSE_FILE: ${{ secrets.XILINX_LICENSE_FILE}}
