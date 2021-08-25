@@ -43,9 +43,7 @@
             "todo_list": "Example <br>"
         },
         "ELHEP_Cores.cores.ads5296a_phy.ads5296a.ADS5296A_XS7": {
-            "does_exist": "True",
-            "sim_type": "VerilogTB",
-            "tb_path": "modules/ELHEP_Cores/elhep_cores/cores/ads5296a_phy/tests"
+            "does_exist": "False"
         },
         "ELHEP_Cores.cores.tdcgpx2_phy.tdcgpx2.TdcGpx2Phy": {
             "does_exist": "False"
