@@ -1,0 +1,6 @@
+<testsuites name="results">
+  <testsuite name="all" package="all">
+    <property name="random_seed" value="1632992007" />
+    <testcase name="test" classname="tb_circular_buffer" file="/home/ms/data/projects/MCORD_DAQ_Firmware/mcord_daq/gateware/tests/circular_buffer/tb_circular_buffer.py" lineno="94" time="13.17974042892456" sim_time_ns="438096.001" ratio_time="33240.108434802285" />
+  </testsuite>
+</testsuites>

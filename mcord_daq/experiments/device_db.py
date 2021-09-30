@@ -1,1 +1,0 @@
-../../build/device_db.py
