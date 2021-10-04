@@ -9,3 +9,4 @@ env/**
 **.csv
 **.pyon
 mcord_daq.old/**
+.vscode/settings.json
