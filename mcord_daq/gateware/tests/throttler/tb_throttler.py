@@ -1,131 +1,169 @@
 import cocotb
 import random
-import time
 
 from cocotb.triggers import Timer, RisingEdge, FallingEdge, Combine, Edge, Event
 from cocotb.clock import Clock
-from random import randint, seed
-from itertools import product
+
+from mcord_daq.gateware.tests.common.stream_tools import StreamMonitor, StreamDriver
 
 
 max_acquisitions = 16
 max_acquisition_len = 1024
 
+seed = 1234
+
 
 class TbThrottler:
 
-    def __init__(self, dut):
+    def __init__(self, dut, seed=None):
         self.dut = dut
+
+        random.seed(seed)
 
         cocotb.fork(Clock(self.dut.sys_clk, 8000).start())
 
         self.re = RisingEdge(self.dut.sys_clk)
         self.fe = FallingEdge(self.dut.sys_clk)
 
-        self.run_data_monitor = True
-        self.collected_data = []
+        self.sink_transactions = []
+        self.source_transactions = []
 
-    @cocotb.coroutine
-    def data_driver(self, data):
-        for data_vals, data_valid_at, data_valid_len in data:
-            self.dut._log.info(f"data_valid_at: {data_valid_at}, data_valid_len: {data_valid_len}")
-            for idx, d in enumerate(data_vals):
-                yield self.fe
-                self.dut.data_i <= d
-                if data_valid_at <= idx <= data_valid_at+data_valid_len:
-                    self.dut.data_valid_i <= 1
-                else:
-                    self.dut.data_valid_i <= 0
+        self.sink_driver = StreamDriver(dut, "sink", self.dut.sys_clk, config={"scatterStb": True})
+        self.sink_monitor = StreamMonitor(dut, "sink", self.dut.sys_clk, callback=self.sink_monitor_callback)
+        self.source_monitor = StreamMonitor(dut, "source", self.dut.sys_clk, callback=self.source_monitor_callback)
 
-    @cocotb.coroutine
-    def data_monitor(self):
-        print(self.run_data_monitor)
-        while self.run_data_monitor:
-            yield self.re
-            if bool(self.dut.data_valid_o.value):
-                self.collected_data.append(self.dut.data_o.value.integer)
+    def sink_monitor_callback(self, data):
+        self.sink_transactions.append(data)
 
-    @cocotb.coroutine
-    def reset(self):
+    def source_monitor_callback(self, data):
+        self.source_transactions.append(data)
+
+    async def reset(self):
         self.dut.arm_i <= 0
         self.dut.rst_i <= 0
-        self.dut.data_valid_i <= 0
+        self.dut.sink_stb <= 0
+        self.dut.sink_eop <= 0
         self.dut.sys_rst <= 1
-        yield self.re
-        yield self.re
+        await self.re
+        await self.re
         self.dut.sys_rst <= 0
         self.dut._log.info("DUT reset done.")
 
-    @cocotb.coroutine
-    def simple_run(self, acq_num, acq_len, seed=None):
-        if seed is None:
-            seed = time.time()
-        random.seed(seed)
-
-        yield self.reset()
-
-        def get_data_sequence():
-            sequence_length = int(2.5*acq_len)
-            data_valid_at = randint(0, acq_len)
-            data_valid_len = randint(0, 2*acq_len)
-            data = [randint(0, 2**16-1) for _ in range(sequence_length)]
-            # data = [_ for _ in range(sequence_length)]
-            expected_upper = min(data_valid_at+acq_len, data_valid_at+data_valid_len)+1
-            expected_data = data[data_valid_at:expected_upper]
-            return (data, data_valid_at, data_valid_len), expected_data
-
-        sequences_num = randint(1, 2*acq_num)
-        drive_data = []
-        expected_data = []
-        self.dut._log.info(f"Sequences num: {sequences_num}")
-        for idx in range(sequences_num):
-            sq_drive_data, sq_expected_data = get_data_sequence()
-            drive_data.append(sq_drive_data)
-            if idx < acq_num:
-                expected_data += sq_expected_data
-        
+    async def arm(self, acq_num, acq_len):
+        await self.re
         self.dut.acq_num_i <= acq_num
         self.dut.acq_len_i <= acq_len
-
-        yield self.re
-        yield self.re
-        yield self.re
-        
-        yield self.fe
         self.dut.arm_i <= 1
-        yield self.fe
+        await self.re
         self.dut.arm_i <= 0
 
-        self.dut._log.info(f"Seed: {seed}, acq_num: {acq_num}, acq_len: {acq_len}")
+    async def reset_arm(self):
+        await self.re
+        self.dut.rst_i <= 1
+        await self.re
+        self.dut.rst_i <= 0
 
-        self.run_data_monitor = True
-        self.collected_data = []
+    async def test_data_packet(self, num, expect_source, randomize=True, no_check=False):
+        source_len_pre = len(self.source_transactions)
+        sink_len_pre = len(self.sink_transactions)
+        data = self.random_list(num) if randomize else [x % 2**16 for x in range(num)]
+        await self.sink_driver.send(data)
+        await Timer(100, "ns")
+        assert sink_len_pre+1 == len(self.sink_transactions)
+        if no_check:
+            return
+        if expect_source:
+            assert source_len_pre+1 == len(self.source_transactions)
+            assert len(self.sink_transactions[-1]) == len(self.source_transactions[-1])
+            assert all([a == b for a, b in zip(self.sink_transactions[-1], self.source_transactions[-1])])
+        else:
+            assert source_len_pre == len(self.source_transactions)
 
-        dgen = cocotb.fork(self.data_driver(drive_data))
-        dmon = cocotb.fork(self.data_monitor())
-        
-        yield dgen
-        for _ in range(100):
-            yield self.re
+    @staticmethod
+    def random_list(num, bits=16):
+        return [random.randint(0, 2**bits-1) for _ in range(num)]
 
-        self.run_data_monitor = False
-        yield dmon
-
-        # for idx, (c, e) in enumerate(zip(self.collected_data, expected_data)):
-        #     print(idx, c, e)
-
-        assert len(expected_data) == len(self.collected_data), f"{len(expected_data)}, {len(self.collected_data)}"
-        for idx, (expected, collected) in enumerate(zip(expected_data, self.collected_data)):
-            assert expected == collected, f"Invalid data at position {idx}, seed {seed}"
-        
 
 @cocotb.test()
-def test(dut):
+async def test_no_arm(dut):
+    """If arm was not issued there should be no transactions"""
     tb = TbThrottler(dut)
-    seed = 1633012016.4046054
-    
-    for _ in range(100):
-        acq_num = randint(1, 10)
-        acq_len = randint(1, 1024)
-        yield tb.simple_run(acq_num, acq_len, seed)
-    
+    await tb.reset()
+    tb.dut.acq_num_i <= 10
+    tb.dut.acq_len_i <= 10
+    await tb.test_data_packet(10, False)
+
+
+@cocotb.test()
+async def test_prearm(dut):
+    """First transaction after ARM is to be ignored to ensure a full packet acquisition"""
+    tb = TbThrottler(dut)
+    await tb.reset()
+    await tb.arm(3, 80)
+    await tb.test_data_packet(10, False)
+
+
+@cocotb.test()
+async def test_numer_of_transactions(dut):
+    """Source should not present more than 3 transactions"""
+    tb = TbThrottler(dut)
+    await tb.reset()
+    await tb.arm(3, 80)
+    # First after arm is to be ignored
+    await tb.test_data_packet(10, False)
+    await tb.test_data_packet(30, True)
+    await tb.test_data_packet(30, True)
+    await tb.test_data_packet(30, True)
+    await tb.test_data_packet(30, False)
+
+
+@cocotb.test()
+async def test_multi_arm(dut):
+    """Source should not present more than 3 transactions"""
+    tb = TbThrottler(dut)
+    await tb.reset()
+    await tb.arm(2, 80)
+    # First after arm is to be ignored
+    await tb.test_data_packet(10, False)
+    await tb.test_data_packet(30, True)
+    await tb.test_data_packet(30, True)
+    await tb.test_data_packet(30, False)
+    await tb.test_data_packet(30, False)
+    await tb.arm(2, 80)
+    await tb.test_data_packet(10, False)
+    await tb.test_data_packet(30, True)
+    await tb.test_data_packet(30, True)
+    await tb.test_data_packet(30, False)
+    await tb.test_data_packet(30, False)
+
+
+@cocotb.test()
+async def test_arm_reset_between_transactions(dut):
+    """Reset arm state between transactions"""
+    tb = TbThrottler(dut)
+    await tb.reset()
+    await tb.arm(3, 80)
+    # First after arm is to be ignored
+    await tb.test_data_packet(10, False)
+    await tb.test_data_packet(30, True)
+    await tb.reset_arm()
+    await tb.test_data_packet(30, False)
+
+
+@cocotb.test()
+async def test_arm_reset_during_transaction(dut):
+    """Reset arm state"""
+    tb = TbThrottler(dut)
+    await tb.reset()
+    await tb.arm(3, 80)
+    # First after arm is to be ignored
+    await tb.test_data_packet(10, False)
+    source_len = len(tb.source_transactions)
+    # This will take at least 30*8ns = 240 ns
+    packet_sender = cocotb.fork(tb.test_data_packet(30, False, no_check=True))
+    await Timer(100, 'ns')
+    await tb.reset_arm()
+    await packet_sender
+    assert source_len == len(tb.source_transactions)
+
+

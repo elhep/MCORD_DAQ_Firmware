@@ -1,15 +1,14 @@
 from migen import *
 
 from migen.genlib.fsm import FSM
+from misoc.interconnect.stream import Endpoint
 
 
 class Throttler(Module):
 
     def __init__(self, data_width, max_acquisitions=16, max_acquisition_len=1024):
-        self.data_i = Signal(data_width)
-        self.data_valid_i = Signal()
-        self.data_o = Signal(data_width)
-        self.data_valid_o = Signal()
+        self.sink = Endpoint([("data", data_width)])
+        self.source = Endpoint([("data", data_width)])
 
         self.arm_i = Signal()
         self.rst_i = Signal()
@@ -21,24 +20,30 @@ class Throttler(Module):
         acquisition_counter = Signal(max=max_acquisitions)
         acquisition_sample_counter = Signal(max=max_acquisition_len)
         arm_d = Signal()
-        self.sync += arm_d.eq(self.arm_i)
-        data_valid_d = Signal()
-        self.sync += data_valid_d.eq(self.data_valid_i)
-        acq_num_d = Signal.like(self.acq_num_i)
+        stb_d = Signal()
+        eop_d = Signal()
         acq_len_d = Signal.like(self.acq_len_i)
+
+        self.sync += [
+            arm_d.eq(self.arm_i),
+            stb_d.eq(self.sink.stb),
+            eop_d.eq(self.sink.eop)
+        ]
 
         fsm = FSM("IDLE")
         self.submodules += fsm
-
         fsm.act("IDLE",
-            If(~arm_d & self.arm_i & self.acq_num_i > 0,
-                NextState("ARM"),
+            If(~arm_d & self.arm_i & (self.acq_num_i > 0),
+                NextState("PREARM"),
                 NextValue(acquisition_counter, self.acq_num_i),
                 NextValue(acq_len_d, self.acq_len_i),
             )
         )
+        fsm.act("PREARM",
+            If(stb_d & eop_d, NextState("ARM"))
+        )
         fsm.act("ARM",
-            If(~data_valid_d & self.data_valid_i,
+            If(~stb_d & self.sink.stb,
                 NextValue(acquisition_counter, acquisition_counter-1),
                 NextValue(acquisition_sample_counter, acq_len_d),
                 NextState("ACQ"),
@@ -46,20 +51,33 @@ class Throttler(Module):
             If(self.rst_i, NextState("IDLE"))
         )
         fsm.act("ACQ",
-            If(acquisition_sample_counter == 0,
-                If(acquisition_counter == 0, NextState("IDLE"))
-                .Else(NextState("ARM"))
-            ).Else(
-                NextValue(acquisition_sample_counter, acquisition_sample_counter-1)
+            If(stb_d,
+                # Packet finished before ending ACQ
+                If(eop_d,
+                   If(acquisition_counter == 0, NextState("IDLE")).Else(NextState("ARM"))
+                # Finished counting
+                ).Elif(
+                    acquisition_sample_counter == 0, NextState("WAIT_EOP")
+                ).Else(
+                    NextValue(acquisition_sample_counter, acquisition_sample_counter-1)
+                )
             ),
             If(self.rst_i, NextState("IDLE"))
         )
+        fsm.act("WAIT_EOP",
+            If(stb_d & eop_d,
+               If(acquisition_counter == 0, NextState("IDLE")).Else(NextState("ARM"))
+            )
+        )
 
-        data_i_d = Signal.like(self.data_i)
         self.sync += [
-            data_i_d.eq(self.data_i),
-            self.data_o.eq(data_i_d),
-            self.data_valid_o.eq(data_valid_d & fsm.ongoing("ACQ"))
+            self.source.payload.data.eq(self.sink.payload.data)
+        ]
+        self.comb += [
+            self.source.stb.eq((acquisition_sample_counter > 0) & stb_d & fsm.ongoing("ACQ")),
+            self.source.eop.eq(
+                (((acquisition_sample_counter == 1) | eop_d) & fsm.ongoing("ACQ")) & self.source.stb
+            )
         ]
 
 

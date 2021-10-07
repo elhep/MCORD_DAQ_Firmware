@@ -38,8 +38,8 @@ class TbCircularBuffer:
     def data_monitor(self):
         while self.run_data_monitor:
             yield self.re
-            if bool(self.dut.data_valid_o.value):
-                self.collected_data.append(self.dut.data_o.value.integer)
+            if bool(self.dut.source_stb.value):
+                self.collected_data.append(self.dut.source_payload_data.value.integer)
 
     @cocotb.coroutine
     def reset(self):

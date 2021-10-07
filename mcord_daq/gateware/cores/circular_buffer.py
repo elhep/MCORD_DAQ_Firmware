@@ -1,5 +1,6 @@
 from migen import *
 from migen.genlib.fsm import FSM
+from misoc.interconnect.stream import Endpoint
 
 
 class TriggeredCircularBuffer(Module):
@@ -18,19 +19,16 @@ class TriggeredCircularBuffer(Module):
     pretrigger+posttrigger <= depth-1
 
     Due to simplified address counter depth must be a power of 2.
-
-    TODO: Determine if there is a one sample slip.
     """
     
-    def __init__(self, data_width, depth=128):
+    def __init__(self, data_width, depth=512):
         # Input interface
         self.data_i = Signal(data_width)
         self.trigger_i = Signal()
         self.pretrigger_i = Signal(max=depth-1)
         self.posttrigger_i = Signal(max=depth-1)  
         # Output interface
-        self.data_o = Signal(data_width)
-        self.data_valid_o = Signal()
+        self.source = Endpoint([("data", data_width)])
 
         # # #
 
@@ -54,7 +52,7 @@ class TriggeredCircularBuffer(Module):
 
         readout_fsm.act("IDLE",
             rd_port.re.eq(0),
-            NextValue(self.data_valid_o, 0),
+            NextValue(self.source.stb, 0),
             If(self.trigger_i & ~trigger_d, 
                 NextState("READOUT"),
                 NextValue(readout_cnt, self.pretrigger_i+self.posttrigger_i+1),
@@ -64,10 +62,10 @@ class TriggeredCircularBuffer(Module):
             rd_port.re.eq(1),
             If(readout_cnt != 0, 
                 NextValue(readout_cnt, readout_cnt-1),
-                NextValue(self.data_valid_o, 1),
+                NextValue(self.source.stb, 1),
             ).Else(
                 NextState("IDLE"),
-                NextValue(self.data_valid_o, 0),
+                NextValue(self.source.stb, 0),
             )
         )
 
@@ -76,14 +74,16 @@ class TriggeredCircularBuffer(Module):
             wr_port.adr.eq(wr_ptr),
             wr_port.dat_w.eq(self.data_i),
             rd_port.adr.eq(rd_ptr),
-            self.data_o.eq(rd_port.dat_r)
+            self.source.payload.data.eq(rd_port.dat_r)
         ]
         # TODO: Implement more complex address counters so that depths other than 
         #       power of 2 are allowed.
         self.sync += [
+            self.source.eop.eq(readout_cnt == 1),
             rd_ptr.eq(wr_ptr-self.pretrigger_i),
             wr_ptr.eq(wr_ptr+1),
         ]
+
 
 if __name__ == "__main__":
     from elhep_cores.simulation.common import generate_verilog
