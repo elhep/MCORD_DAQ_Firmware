@@ -12,3 +12,4 @@ mcord_daq.old/**
 .vscode/settings.json
 .venv/**
 .idea/**
+**.vcd
