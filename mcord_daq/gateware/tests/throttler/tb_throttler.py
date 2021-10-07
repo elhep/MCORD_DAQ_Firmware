@@ -1,5 +1,6 @@
 import cocotb
 import random
+import time
 
 from cocotb.triggers import Timer, RisingEdge, FallingEdge, Combine, Edge, Event
 from cocotb.clock import Clock
@@ -10,14 +11,14 @@ from mcord_daq.gateware.tests.common.stream_tools import StreamMonitor, StreamDr
 max_acquisitions = 16
 max_acquisition_len = 1024
 
-seed = 1234
-
 
 class TbThrottler:
 
     def __init__(self, dut, seed=None):
         self.dut = dut
 
+        if seed is None:
+            seed = time.time()
         random.seed(seed)
 
         cocotb.fork(Clock(self.dut.sys_clk, 8000).start())
@@ -165,5 +166,3 @@ async def test_arm_reset_during_transaction(dut):
     await tb.reset_arm()
     await packet_sender
     assert source_len == len(tb.source_transactions)
-
-
