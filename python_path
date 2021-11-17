@@ -1,1 +1,1 @@
-export PYTHONPATH=$(pwd)
+export PYTHONPATH=$(pwd):$(pwd)/modules/ELHEP_Cores:$(pwd)/modules/migen:$(pwd)/modules/misoc:$(pwd)/modules/artiq
