@@ -1,0 +1,11 @@
+#!/bin/bash
+
+if [ -n "$FTDI_LOCATION" ]; then
+    FTDI_OPTION="-I \"ftdi_location $FTDI_LOCATION\""
+else
+    echo "Using default FTDI location. If you have more than one FT2232 connected please"
+    echo "spcify location with FTDI_LOCATION variable (e.g. 1:3,1,3)"
+    FTDI_OPTION=""
+fi
+
+dartiq run "artiq_flash $FTDI_OPTION -t afck1v1 start"

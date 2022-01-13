@@ -326,6 +326,9 @@ def main():
     parser.set_defaults(output_dir="build")
     args = parser.parse_args()
 
+    if args.integrated_rom_size:
+        args.integrated_rom_bin = os.path.join(args.output_dir, "software", "bootloader", "bootloader.bin")
+
     os.makedirs(args.output_dir, exist_ok=True)
 
     soc = AfckTdc(**mcord_argdict(args), output_dir=args.output_dir)

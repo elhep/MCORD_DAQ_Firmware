@@ -1,0 +1,29 @@
+#!/bin/bash
+
+VARIANT="build"
+if [ -z "$1" ]; then
+    VARIANT="$1"
+fi
+
+MCORD_MAC="12:65:0b:c1:fd:4d"
+
+if [ -z "$MCORD_DAQ_IP" ]; then
+    MCORD_DAQ_IP="192.168.95.203"
+    echo "Environment variable MCORD_DAQ_IP not set."
+    echo "Using default IP address: $MCORD_DAQ_IP, continue? [ENTER or Ctrl-C to abort]"
+    read
+fi
+
+if [ -n "$FTDI_LOCATION" ]; then
+    FTDI_OPTION="-I \"ftdi_location $FTDI_LOCATION\""
+else
+    echo "Using default FTDI location. If you have more than one FT2232 connected please"
+    echo "spcify location with FTDI_LOCATION variable (e.g. 1:3,1,3)"
+    FTDI_OPTION=""
+fi
+
+dartiq run "artiq_mkfs -s ip $MCORD_DAQ_IP -s mac $MCORD_MAC ./build/storage.img"
+
+dartiq run "artiq_flash $FTDI_OPTION -d ./ --srcbuild -f ./build/storage.img -V build_led -t afck1v1 \
+            gateware bootloader start"
+# erase gateware bootloader firmware storage start"
