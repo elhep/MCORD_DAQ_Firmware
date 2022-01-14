@@ -2,6 +2,6 @@
 
 set -ex
 
-dartiq run "artiq_flash $FTDI_OPTION -d ./ --srcbuild -V build -t afck1v1 load"
+dartiq run "artiq_flash $FTDI_OPTION -d ./ --srcbuild -V build.netboot -t afck1v1 load"
 sleep 5s
-dartiq run "artiq_netboot -f ./build/software/runtime/runtime.bin -b $MCORD_DAQ_IP"
+dartiq run "artiq_netboot -f ./build.netboot/software/runtime/runtime.bin -b $MCORD_DAQ_IP"

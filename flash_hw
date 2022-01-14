@@ -1,5 +1,8 @@
 #!/bin/bash
 
+echo "Flash boot is work in progress! Use netboot"
+exit
+
 VARIANT="build"
 if [ -z "$1" ]; then
     VARIANT="$1"
@@ -22,8 +25,7 @@ else
     FTDI_OPTION=""
 fi
 
-dartiq run "artiq_mkfs -s ip $MCORD_DAQ_IP -s mac $MCORD_MAC ./build/storage.img"
+dartiq run "artiq_mkfs -s ip $MCORD_DAQ_IP -s mac $MCORD_MAC ./build.flash/storage.img"
 
-dartiq run "artiq_flash $FTDI_OPTION -d ./ --srcbuild -f ./build/storage.img -V build_led -t afck1v1 \
-            gateware bootloader start"
-# erase gateware bootloader firmware storage start"
+dartiq run "artiq_flash $FTDI_OPTION -d ./ --srcbuild -f ./build.flash/storage.img -V build.flash -t afck1v1 \
+            erase gateware bootloader firmware storage start"

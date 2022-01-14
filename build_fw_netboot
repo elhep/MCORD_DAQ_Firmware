@@ -1,3 +1,3 @@
 #!/bin/bash
 
-dartiq run "python -m mcord_daq.gateware.mcord_daq_firmware --with-fmc1 --integrated-rom-size 131072 $*"
+dartiq run "python -m mcord_daq.gateware.mcord_daq_firmware --with-fmc1 --output-dir build.netboot --integrated-rom-size 131072 $*"
