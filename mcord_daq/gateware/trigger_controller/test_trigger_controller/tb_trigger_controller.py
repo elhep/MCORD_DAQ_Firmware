@@ -166,38 +166,38 @@ async def test_A0(dut):
     assert sum(trigger_counter) == 0
 
     
-@cocotb.test()
-async def test_A1(dut):
-    """Pulses on every channel with a specified separatation 
-    large enought so coincidence is not detected, coincidence modules
-    enabled."""
+# @cocotb.test()
+# async def test_A1(dut):
+#     """Pulses on every channel with a specified separatation 
+#     large enought so coincidence is not detected, coincidence modules
+#     enabled."""
 
-    tb = TriggerControllerTB(dut)
+#     tb = TriggerControllerTB(dut)
 
-    trigger_counter, trigger_ids = await run_for_ax(tb, 100, True)
-    assert sum(trigger_counter) == 0
+#     trigger_counter, trigger_ids = await run_for_ax(tb, 100, True)
+#     assert sum(trigger_counter) == 0
 
 
-@cocotb.test()
-async def test_A2(dut):
-    """Pulses on every channel with a specified separatation 
-    small enought so coincidence is detected, coincidence modules
-    enabled."""
+# @cocotb.test()
+# async def test_A2(dut):
+#     """Pulses on every channel with a specified separatation 
+#     small enought so coincidence is detected, coincidence modules
+#     enabled."""
 
-    tb = TriggerControllerTB(dut)
+#     tb = TriggerControllerTB(dut)
 
-    trigger_counter, trigger_ids = await run_for_ax(tb, 70, True)
-    for tc in trigger_counter:
-        assert tc == 25
+#     trigger_counter, trigger_ids = await run_for_ax(tb, 70, True)
+#     for tc in trigger_counter:
+#         assert tc == 25
     
-    for ch_idx, ch_ids in enumerate(trigger_ids):
-        if ch_idx in [0,1]:
-            for c in ch_ids:
-                assert c["id"] == 0
-        elif ch_idx in [2,3]:
-            for c in ch_ids:
-                assert c["id"] == 1
-        else:
-            raise TestFailure("Invalid id")
-        check_cnt([c['cnt'] for c in ch_ids])
+#     for ch_idx, ch_ids in enumerate(trigger_ids):
+#         if ch_idx in [0,1]:
+#             for c in ch_ids:
+#                 assert c["id"] == 0
+#         elif ch_idx in [2,3]:
+#             for c in ch_ids:
+#                 assert c["id"] == 1
+#         else:
+#             raise TestFailure("Invalid id")
+#         check_cnt([c['cnt'] for c in ch_ids])
         

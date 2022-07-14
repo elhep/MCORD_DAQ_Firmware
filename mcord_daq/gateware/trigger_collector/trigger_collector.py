@@ -41,38 +41,75 @@ from elhep_cores.cores.xilinx_ila import ILAProbe
 # Jeżeli początek 
 
 class CollectorPacket:
-    def __init__(self, ID=0, SystemTimestamp=0, TDCSample=0,
-        StatisticalValues=0, ADCSamples = 0):
+    def __init__(self, ID, SystemTimestamp, TDCSample,
+        StatisticalValues, ADCSamples = 0):
         # ID of the source channel, 10b
         # System Timestamp, together with source channel ID will act as event ID, 64b
         # T x TDC sample (T ideally should be 2, one per scintillator end, may be more if CFD is not configured properly, assume at most 10), 440b
         # Statistical values (imulse integral, imulse length), 20b+10b = 30b
         # Optional ADC samples, up to 200 10b values per event, 200*10 = 200b
 
-        self.ID = Signal(10).eq(ID)
-        self.SystemTimestamp = Signal(64).eq(SystemTimestamp)
-        self.TDCSample = Signal(440).eq(TDCSample)
-        self.StatisticalValues = Signal(30).eq(StatisticalValues)
-        self.ADCSamples = Signal(200).eq(ADCSamples)
+        # EDIT: 14.07.2022 - decision to limit full transaction to two 32-bit words
+        # We are only using ID and SystemTimestamp
+
+        self.ID = Signal(5) ## previous 10 
+        self.SystemTimestamp = Signal(59) ## previous 64
+        self.TDCSample = Signal(440)
+        self.StatisticalValues = Signal(30)
+        self.ADCSamples = Signal(200)
+        
+        self.ID.eq(ID)
+        self.SystemTimestamp.eq(SystemTimestamp)
+        self.TDCSample.eq(TDCSample)
+        self.StatisticalValues.eq(StatisticalValues)
+        self.ADCSamples.eq(ADCSamples)
 
 ## Input mask in form of 0x3FF, if correct 
 class CollectorGroup:
-    def __init__(self, InputMask, ValidTopBits):
-        self.InputMask = Signal(10).eq(InputMask)
-        self.ValidTopBits = ValidTopBits
-        self.Triggered = Signal().eq(0)
-        self.Packet = CollectorPacket()
+    def __init__(self, InputMask, ValidMask):
+        self.InputMask = Signal(10)
+        self.InputMask.eq(InputMask)
+        self.ValidMask = Signal(10)
+        self.ValidMask.eq(ValidMask)
+        self.Triggered = Signal()
+        self.Triggered.eq(1)
+
+        self.Packet = CollectorPacket(0, 0, 0xdeadbeef, 0, 0)
 
     def AssignPacket(self, Packet):
         self.Packet = Packet
 
-
+class CollectorConfig:
+    def __init__(self, Tmax=0):
+        # Minimum time between samples
+        self.Tmax = Tmax
 
 
 
 class TriggerCollector(Module, HasDdbManager):
 
-    def __init__(self, input_channels=2, groups=2, outputs=1, 
+    def _add_output(self, MainTrigger):
+
+        trigger_or = Signal()
+        trigger_or_prev = Signal()
+        trigger = Signal()
+
+        # self.comb += trigger_or.eq(channel_trigger)
+        self.comb += trigger_or.eq(MainTrigger)
+
+
+
+
+        self.sync.rio_phy += [
+            trigger_or_prev.eq(trigger_or),
+            If(self.trigger_controller_reset, trigger.eq(0))
+            .Else(trigger.eq(trigger_or & ~trigger_or_prev))
+        ]
+
+        return trigger
+
+
+    def __init__(self, input_channels=2, groups=2, 
             module_identifier="trigger_collector"):
         self.module_identifier = module_identifier
 
@@ -86,9 +123,65 @@ class TriggerCollector(Module, HasDdbManager):
                 module="artiq.coredevice.ttl",
                 class_name="TTLOut")
 
-        self.outputs = outputs
+        # self.outputs = outputs
 
-        self.ChannelGroups = [CollectorGroup(0) for i in range(groups)]
+        self.TestPacket = CollectorPacket(0, 50, 0, 0)
+
+        self.InputPackets = [CollectorPacket(0, 0, 0, 0) for i in range(groups)]
+        self.ChannelPackets = [CollectorGroup(0x3FF, 0x3FF) for i in range(groups)]
+        self.WriteSignals = Signal(groups)
+        self.MainTrigger = Signal() 
+
+        for i in range(groups):
+            self.sync.rio_phy += [
+                    # self.TestPacket,
+                    If(self.WriteSignals[i],
+                    self.ChannelPackets[i].Triggered.eq(0),
+                    self.ChannelPackets[i].Packet.ID.eq(self.InputPackets[i].ID),
+                    self.ChannelPackets[i].Packet.SystemTimestamp.eq(self.InputPackets[i].SystemTimestamp),
+                    )
+            ]
+
+        TriggeredCon = Signal(groups)
+        
+        for i in range(groups):
+            self.comb += [
+                TriggeredCon[i].eq(self.ChannelPackets[i].Triggered)
+            ]
+
+        TriggerCheck = Signal()
+            
+        self.sync.rio_phy += [
+            If(TriggeredCon == 0, TriggerCheck.eq(1))
+            .Else(TriggerCheck.eq(0)),
+
+            
+        ]
+
+
+        # Dla zerowej grupy stowrz zakres do porownania, 
+        # jezeli probka z innej grupy jest w przedziale (lub wiekszej liczby grup)
+        # to wyzwol sygnal i dopisz triggered 
+        # for i in self.ChannelGroups 
+
+        # If(self.trigger_controller_reset, trigger.eq(0))
+
+        # self.comb += trigger_or.eq(MainTrigger)
+
+        # self.sync.rio_phy += [
+        #     If(self.ChannelGroups[0].Triggered ==, 
+        #         self.MainTrigger.eq(1),
+        #         self.ChannelGroups[0].Triggered,
+        #         # If(self.ChannelGroups[0].Packet.SystemTimestamp, self.MainTrigger.eq(1))
+        #         # .Else(self.MainTrigger.eq(0))
+        #     )
+        #     trigger_or_prev.eq(trigger_or),
+        #     If(self.trigger_controller_reset, trigger.eq(0))
+        #     .Else(trigger.eq(trigger_or & ~trigger_or_prev))
+        # ]
+
+
+        # self._add_output()
 
 
         # # Register core device
@@ -182,7 +275,8 @@ class SimulationWrapper(Module):
 
     def __init__(self):
         input_channels = 2
-        outputs = 1
+        groups = 2
+
 
         # trigger_id_len = 1 + trigger_counter_len
 
@@ -206,14 +300,22 @@ class SimulationWrapper(Module):
 
         dut = TriggerCollector(
             input_channels, 
-            outputs
+            groups
         )
         self.submodules.dut = dut
+
+        # WriteSignals = Signal(groups, name="data_i")
+        # InputPackets = Signal(groups)
 
         self.io = {
             cd.clk,
             cd.rst,
             *(get_bus_signals(dut.reset_phy.rtlink, "reset_phy_rtio")),
+            dut.WriteSignals,
+            dut.InputPackets[0].ID,
+            dut.InputPackets[0].SystemTimestamp,
+            dut.InputPackets[1].ID,
+            dut.InputPackets[1].SystemTimestamp,
         }
 
 if __name__ == "__main__":
