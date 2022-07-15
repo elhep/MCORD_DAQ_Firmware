@@ -50,7 +50,7 @@ class CollectorPacket:
         # Optional ADC samples, up to 200 10b values per event, 200*10 = 200b
 
         # EDIT: 14.07.2022 - decision to limit full transaction to two 32-bit words
-        # We are only using ID and SystemTimestamp
+        # We are only using ID and SystemTimestamp - together 64bits
 
         self.ID = Signal(5) ## previous 10 
         self.SystemTimestamp = Signal(59) ## previous 64
@@ -88,6 +88,15 @@ class CollectorConfig:
 
 class TriggerCollector(Module, HasDdbManager):
 
+    # def _absolute(self, Value0 : Signal(), Value1 : Signal()):
+
+    #     Value = Signal.like(Value0)
+
+    #     If(Value0 >= Value1, Value.eq(Value0))
+    #     If(Value0 < Value1, Value.eq(Value1))
+
+    #     return Value
+
     def _add_output(self, MainTrigger):
 
         trigger_or = Signal()
@@ -97,12 +106,9 @@ class TriggerCollector(Module, HasDdbManager):
         # self.comb += trigger_or.eq(channel_trigger)
         self.comb += trigger_or.eq(MainTrigger)
 
-
-
-
         self.sync.rio_phy += [
             trigger_or_prev.eq(trigger_or),
-            If(self.trigger_controller_reset, trigger.eq(0))
+            If(self.trigger_collector_reset, trigger.eq(0))
             .Else(trigger.eq(trigger_or & ~trigger_or_prev))
         ]
 
@@ -112,6 +118,8 @@ class TriggerCollector(Module, HasDdbManager):
     def __init__(self, input_channels=2, groups=2, 
             module_identifier="trigger_collector"):
         self.module_identifier = module_identifier
+
+        assert groups >= 2, f"Must be at least 2 groups! " 
 
         # Trigger reset 
         self.trigger_collector_reset = Signal()
@@ -123,14 +131,10 @@ class TriggerCollector(Module, HasDdbManager):
                 module="artiq.coredevice.ttl",
                 class_name="TTLOut")
 
-        # self.outputs = outputs
-
-        self.TestPacket = CollectorPacket(0, 50, 0, 0)
-
         self.InputPackets = [CollectorPacket(0, 0, 0, 0) for i in range(groups)]
         self.ChannelPackets = [CollectorGroup(0x3FF, 0x3FF) for i in range(groups)]
         self.WriteSignals = Signal(groups)
-        self.MainTrigger = Signal() 
+        # self.MainTrigger = Signal() 
 
         for i in range(groups):
             self.sync.rio_phy += [
@@ -142,46 +146,42 @@ class TriggerCollector(Module, HasDdbManager):
                     )
             ]
 
-        TriggeredCon = Signal(groups)
+        TriggeredCon = Signal(groups, reset=2**groups-1)
         
         for i in range(groups):
-            self.comb += [
+            self.sync.rio_phy += [
                 TriggeredCon[i].eq(self.ChannelPackets[i].Triggered)
             ]
 
-        TriggerCheck = Signal()
+        SubstractionRes = [Signal.like(self.ChannelPackets[0].Packet.SystemTimestamp) for i in range(groups - 1)]
+        SubstractionTrig = Signal(groups-1)
+
+        TriggerTimeThreshold = 100
+
+        self.PacketTrigger = Signal()
+
+        for i in range(groups - 1):
+            self.sync.rio_phy += [
+                If(self.ChannelPackets[0].Packet.SystemTimestamp >= self.ChannelPackets[i+1].Packet.SystemTimestamp,
+                SubstractionRes[i].eq(self.ChannelPackets[0].Packet.SystemTimestamp - self.ChannelPackets[i+1].Packet.SystemTimestamp))
+                .Else(SubstractionRes[i].eq(self.ChannelPackets[i+1].Packet.SystemTimestamp - self.ChannelPackets[0].Packet.SystemTimestamp)),
+                
+                If(SubstractionRes[i] < TriggerTimeThreshold, SubstractionTrig[i].eq(1))
+                .Else(SubstractionTrig[i].eq(0)),
+            ]
             
         self.sync.rio_phy += [
-            If(TriggeredCon == 0, TriggerCheck.eq(1))
-            .Else(TriggerCheck.eq(0)),
-
-            
+            If((SubstractionTrig == (2**(groups - 1) - 1)), 
+                If(TriggeredCon == 0, self.PacketTrigger.eq(1)))
+            .Else(self.PacketTrigger.eq(0))
         ]
 
+        for i in range(groups):
+            self.sync.rio_phy += [
+                If(self.PacketTrigger==1, self.ChannelPackets[i].Triggered.eq(1))
+            ]
 
-        # Dla zerowej grupy stowrz zakres do porownania, 
-        # jezeli probka z innej grupy jest w przedziale (lub wiekszej liczby grup)
-        # to wyzwol sygnal i dopisz triggered 
-        # for i in self.ChannelGroups 
-
-        # If(self.trigger_controller_reset, trigger.eq(0))
-
-        # self.comb += trigger_or.eq(MainTrigger)
-
-        # self.sync.rio_phy += [
-        #     If(self.ChannelGroups[0].Triggered ==, 
-        #         self.MainTrigger.eq(1),
-        #         self.ChannelGroups[0].Triggered,
-        #         # If(self.ChannelGroups[0].Packet.SystemTimestamp, self.MainTrigger.eq(1))
-        #         # .Else(self.MainTrigger.eq(0))
-        #     )
-        #     trigger_or_prev.eq(trigger_or),
-        #     If(self.trigger_controller_reset, trigger.eq(0))
-        #     .Else(trigger.eq(trigger_or & ~trigger_or_prev))
-        # ]
-
-
-        # self._add_output()
+        self.Trigger = self._add_output(self.PacketTrigger)
 
 
         # # Register core device
@@ -316,6 +316,7 @@ class SimulationWrapper(Module):
             dut.InputPackets[0].SystemTimestamp,
             dut.InputPackets[1].ID,
             dut.InputPackets[1].SystemTimestamp,
+            dut.Trigger,
         }
 
 if __name__ == "__main__":
