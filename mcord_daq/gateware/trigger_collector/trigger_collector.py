@@ -21,24 +21,11 @@ from elhep_cores.helpers.ddb_manager import HasDdbManager
 from elhep_cores.simulation.common import update_tb
 from elhep_cores.cores.xilinx_ila import ILAProbe
 
+## Packet Trigger Design
+# In principle packet arrives via RTLink,
+# Synchronization is necessary, proposition to use 0x1ACFFC1D or part of it (3 x 32 bits)
 
-## stare nie aktualne
-# Dane w postaci wartosci countera przychodza z n kanalow (10 bitow)
-# jest zrobiona macierz i maska, ktore kanaly maja byc brane pod uwage
-# Ustawialne Tmin pomiedzy probkami (od 0 do X)
-# Ustawialne Tmax pomiedzy probkami (od X do 7?)
-# Generowany trigger jako wyjscie 
-
-# Otrzymuje wartosc counter jako wejscie kanalu - 32 bity 
-# sprawdzam 
-
-
-# liczba kanalow wejsciowych
-# liczba wyjsc - kazde wyjscie ma jedna maske 
-
-## System paczek
-# Paczka wchodzi przez RTIOLink, synchronizacja przez słowo 0x1ACFFC1D
-# Jeżeli początek 
+#TODO: TB and RTLink wrapper for data input
 
 class CollectorPacket:
     def __init__(self, ID, SystemTimestamp, TDCSample,
@@ -88,14 +75,6 @@ class CollectorConfig:
 
 class TriggerCollector(Module, HasDdbManager):
 
-    # def _absolute(self, Value0 : Signal(), Value1 : Signal()):
-
-    #     Value = Signal.like(Value0)
-
-    #     If(Value0 >= Value1, Value.eq(Value0))
-    #     If(Value0 < Value1, Value.eq(Value1))
-
-    #     return Value
 
     def _add_output(self, MainTrigger):
 
@@ -115,7 +94,7 @@ class TriggerCollector(Module, HasDdbManager):
         return trigger
 
 
-    def __init__(self, input_channels=2, groups=2, 
+    def __init__(self, groups=2, 
             module_identifier="trigger_collector"):
         self.module_identifier = module_identifier
 
@@ -131,18 +110,21 @@ class TriggerCollector(Module, HasDdbManager):
                 module="artiq.coredevice.ttl",
                 class_name="TTLOut")
 
+        self.Enabled = Signal()
+        self._add_rtlink()
+
         self.InputPackets = [CollectorPacket(0, 0, 0, 0) for i in range(groups)]
         self.ChannelPackets = [CollectorGroup(0x3FF, 0x3FF) for i in range(groups)]
         self.WriteSignals = Signal(groups)
-        # self.MainTrigger = Signal() 
 
         for i in range(groups):
             self.sync.rio_phy += [
-                    # self.TestPacket,
-                    If(self.WriteSignals[i],
-                    self.ChannelPackets[i].Triggered.eq(0),
-                    self.ChannelPackets[i].Packet.ID.eq(self.InputPackets[i].ID),
-                    self.ChannelPackets[i].Packet.SystemTimestamp.eq(self.InputPackets[i].SystemTimestamp),
+                    If(self.Enabled == 1, 
+                        If(self.WriteSignals[i],
+                            self.ChannelPackets[i].Triggered.eq(0),
+                            self.ChannelPackets[i].Packet.ID.eq(self.InputPackets[i].ID),
+                            self.ChannelPackets[i].Packet.SystemTimestamp.eq(self.InputPackets[i].SystemTimestamp),
+                        )
                     )
             ]
 
@@ -156,7 +138,7 @@ class TriggerCollector(Module, HasDdbManager):
         SubstractionRes = [Signal.like(self.ChannelPackets[0].Packet.SystemTimestamp) for i in range(groups - 1)]
         SubstractionTrig = Signal(groups-1)
 
-        TriggerTimeThreshold = 100
+        TriggerTimeThreshold = self.Tmax
 
         self.PacketTrigger = Signal()
 
@@ -199,7 +181,7 @@ class TriggerCollector(Module, HasDdbManager):
 
     def _add_rtlink(self):
         # Address 0: enabled
-        # Address 1: pulse length
+        # Address 1: Tmax
         # Address 2: mask
 
         # self.mask = Signal(len(self.outputs))
@@ -208,7 +190,8 @@ class TriggerCollector(Module, HasDdbManager):
         adr_width = len(Signal(max=3+1))+2
 
         self.rtlink = rtlink.Interface(
-            rtlink.OInterface(data_width=32, address_width=adr_width))
+            rtlink.OInterface(data_width=32, address_width=adr_width),
+            rtlink.IInterface(data_width=32, timestamped=True))
 
         self.rtlink_address = rtlink_address = Signal.like(self.rtlink.o.address)
         self.rtlink_wen = rtlink_wen = Signal()
@@ -217,36 +200,35 @@ class TriggerCollector(Module, HasDdbManager):
             rtlink_wen.eq(self.rtlink.o.address[0]),
         ]
 
-        RowsNum = 5
+        # RowsNum = 5
 
-        self.DataShift = Array(Signal(32) for i in range(RowsNum))
+        # self.DataShift = Array(Signal(32) for i in range(RowsNum))
         # mask_array = self.signal_to_array(self.mask)
+
+        self.Tmax = Signal(32)
 
         self.sync.rio_phy += [
             # self.rtlink.i.stb.eq(0),
             If(self.rtlink.o.stb,
                 # Write
                 If(rtlink_wen & (rtlink_address == 0),
-                    # (for i in range(RowsNum):
-                    self.DataShift[0].eq(self.rtlink.o.data)
-
-                )
-                # ).
-                # Elif(rtlink_wen & (rtlink_address == 1),
-                #     self.pulse_length.eq(self.rtlink.o.data)
-                # )
+                    self.Enabled.eq(self.rtlink.o.data)
+                ).
+                Elif(rtlink_wen & (rtlink_address == 1),
+                    self.Tmax.eq(self.rtlink.o.data)
+                ).
                 # Elif(rtlink_wen & (rtlink_address >= 2),
                 #     mask_array[rtlink_address-2].eq(self.rtlink.o.data)
                 # ).
                 # Readout
-                # Elif(~rtlink_wen & (rtlink_address == 0),
-                #     self.rtlink.i.data.eq(self.enabled),
-                #     self.rtlink.i.stb.eq(1)
-                # ).
-                # Elif(~rtlink_wen & (rtlink_address == 1),
-                #     self.rtlink.i.data.eq(self.pulse_length),
-                #     self.rtlink.i.stb.eq(1)
-                # )
+                Elif(~rtlink_wen & (rtlink_address == 0),
+                    self.rtlink.i.data.eq(self.Enabled),
+                    self.rtlink.i.stb.eq(1)
+                ).
+                Elif(~rtlink_wen & (rtlink_address == 1),
+                    self.rtlink.i.data.eq(self.Tmax),
+                    self.rtlink.i.stb.eq(1)
+                )
                 # Elif(~rtlink_wen & (rtlink_address >= 2),
                 #     self.rtlink.i.data.eq(mask_array[rtlink_address-2]),
                 #     self.rtlink.i.stb.eq(1)
@@ -274,7 +256,7 @@ def get_bus_signals(bus, bus_name="rtio"):
 class SimulationWrapper(Module):
 
     def __init__(self):
-        input_channels = 2
+        # input_channels = 2
         groups = 2
 
 
@@ -299,7 +281,7 @@ class SimulationWrapper(Module):
         # output_triggers = [o['trigger'] for o in outputs]
 
         dut = TriggerCollector(
-            input_channels, 
+            # input_channels, 
             groups
         )
         self.submodules.dut = dut
