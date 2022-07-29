@@ -44,21 +44,61 @@ class TriggerCollectorTB:
         #     RtLinkIface.get_iface_by_prefix(dut, f"l1_{i}_rtio", debug=debug) 
         #     for i in range(l1_num)
         # ]
-        # self.output_config_rtlink = \
-        #     RtLinkIface.get_iface_by_prefix(dut, f"output_config_rtio", 
-        #         debug=debug) 
-        # self.trigger = [
-        #     getattr(dut, f"trigger_in_{idx}") for idx in range(trig_num)
-        # ]
-        # self.output = [
-        #     getattr(dut, f"trigger_out_{idx}") for idx in range(output_num)
-        # ]
+        self.config_rtlink = \
+            RtLinkIface.get_iface_by_prefix(dut, f"config_rtio", 
+                debug=debug) 
+
+        WriteSignals = [
+            getattr(dut, f"WriteSignals")
+        ]
+
+        IDs = []
+
+        for i in range(trig_num):
+            if i == 0:
+                IDs += [
+                    getattr(dut, f"ID")
+                ]
+            else:
+                IDs += [
+                    getattr(dut, f"ID_{i}")
+                ]
+
+
+        # print(IDs)
+
+        SystemTimestamps = []
+
+        for i in range(trig_num):
+            if i == 0:
+                SystemTimestamps += [
+                    getattr(dut, f"SystemTimestamp")
+                ]
+            else:
+                SystemTimestamps += [
+                    getattr(dut, f"SystemTimestamp_{i}")
+                ]
+
+        self.packet_input = []
+        for i in range(trig_num):
+
+            self.packet_input.append([
+                WriteSignals,
+                IDs[i],
+                SystemTimestamps[i],
+            ]
+            )
+            
+        self.output = [
+            getattr(dut, f"trigger")
+        ]
         # self.output_id = [
         #     getattr(dut, f"trigger_out_id_{idx}") for idx in range(output_num)
         # ]
 
     async def reset(self):
-        # await self.set_triggers(0x0)
+        await self.write_packet(0, 0, 0)
+        await self.write_packet(1, 0, 0)
         await self.set_reset(1)
         await Timer(30, 'ns')
         await self.set_reset(0)
@@ -71,11 +111,15 @@ class TriggerCollectorTB:
     #     await target[idx].write(pulse_length, 0x1 << 1 | 1)
     #     await target[idx].write(mask, 0x2 << 1 | 1)
 
-    # async def enable_layer(self, target, idx, enabled=True):
-    #     await target[idx].write(int(enabled), 0x0 << 1 | 1)
+    async def enable(self):
+        await self.config_rtlink.write(1, 0x0 << 1 | 1)
+        await self.fe
+        # await self.config_rtlink.read()
+        await self.fe
 
-    # async def configure_output(self, idx, mask):
-    #     await self.output_config_rtlink.write(mask, idx << 1 | 1)
+    async def configure_Tmax(self, Tmax):
+        await self.config_rtlink.write(Tmax, 0x1 << 1 | 1)
+        await self.fe
 
     # async def set_triggers(self, mask):
     #     await self.fe
@@ -83,38 +127,53 @@ class TriggerCollectorTB:
     #         trigger <= (mask >> idx) & 0x1
     #     await self.re
     
-    # async def pulse_trigger(self, idx):
-    #     await self.fe
-    #     self.trigger[idx] <= 1
-    #     await self.re
-    #     await self.fe
-    #     self.trigger[idx] <= 0
+    async def write_packet(self, group, ID, SystemTime):
+        await self.fe
+        # print(self.)
+        # print(self.packet_input)
+        # print(self.packet_input[1][0])
+        self.packet_input[group][0][0] <= 2**group
+        self.packet_input[group][1] <= ID
+        self.packet_input[group][2] <= SystemTime
+        
+        await self.fe
+        self.packet_input[group][0][0] <= 0
+        self.packet_input[group][1] <= 0
+        self.packet_input[group][2] <= 0
 
 
 async def run_for_ax(tb): #, trigger_delay, enable):
     await tb.reset()
 
-    # # Scintilator 0 - inputs
-    # await tb.configure_layer(tb.l0_rtlink, 0, 10, 0b0011)
-    # # Scintilator 1 - inputs
-    # await tb.configure_layer(tb.l0_rtlink, 1, 10, 0b1100)
-    
-    # # Configure coincidence - detecting single board events
-    # await tb.configure_layer(tb.l1_rtlink, 0, 10, 0b01) 
-    # await tb.configure_layer(tb.l1_rtlink, 1, 10, 0b10)
+    # Configure Tmax to 50
+    await tb.configure_Tmax(50)
 
-    # # Scintilator 0 outputs from L1/0
-    # await tb.configure_output(0, 0b01)
-    # await tb.configure_output(1, 0b01)
+    # Enable 
+    await tb.enable()
+    await Timer(300, 'ns')
 
-    # # Scintilator 1 outputs from L1/1
-    # await tb.configure_output(2, 0b10)
-    # await tb.configure_output(3, 0b10)
+    # Write 1st packet
+    await tb.write_packet(1, 15, 1000)    
 
-    # # Enable all layers
-    # if enable:
-    #     for target, idx in product([tb.l0_rtlink, tb.l1_rtlink], range(2)):
-    #         await tb.enable_layer(target, idx)
+    # Write 2nd packet
+    await tb.write_packet(0, 18, 1049)   
+    test = False
+    # Check for trigger 
+    while not test:
+        await tb.re
+        if tb.output[0] == 1:
+            test = True
+    await tb.re
+
+    # Write 1st packet
+    await tb.write_packet(1, 11, 6500)    
+
+    # Write 2nd packet
+    await tb.write_packet(0, 3, 6530)   
+
+
+    await Timer(300, 'ns')
+
 
     # pattern_finished = False
     # async def trigger_pattern():

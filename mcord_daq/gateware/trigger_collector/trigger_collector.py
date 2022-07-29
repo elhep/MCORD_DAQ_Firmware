@@ -58,7 +58,7 @@ class CollectorGroup:
         self.InputMask.eq(InputMask)
         self.ValidMask = Signal(10)
         self.ValidMask.eq(ValidMask)
-        self.Triggered = Signal()
+        self.Triggered = Signal(1, reset=1)
         self.Triggered.eq(1)
 
         self.Packet = CollectorPacket(0, 0, 0xdeadbeef, 0, 0)
@@ -74,8 +74,6 @@ class CollectorConfig:
 
 
 class TriggerCollector(Module, HasDdbManager):
-
-
     def _add_output(self, MainTrigger):
 
         trigger_or = Signal()
@@ -92,7 +90,6 @@ class TriggerCollector(Module, HasDdbManager):
         ]
 
         return trigger
-
 
     def __init__(self, groups=2, 
             module_identifier="trigger_collector"):
@@ -120,7 +117,7 @@ class TriggerCollector(Module, HasDdbManager):
         for i in range(groups):
             self.sync.rio_phy += [
                     If(self.Enabled == 1, 
-                        If(self.WriteSignals[i],
+                        If(self.WriteSignals[i] == 1,
                             self.ChannelPackets[i].Triggered.eq(0),
                             self.ChannelPackets[i].Packet.ID.eq(self.InputPackets[i].ID),
                             self.ChannelPackets[i].Packet.SystemTimestamp.eq(self.InputPackets[i].SystemTimestamp),
@@ -152,7 +149,7 @@ class TriggerCollector(Module, HasDdbManager):
                 .Else(SubstractionTrig[i].eq(0)),
             ]
             
-        self.sync.rio_phy += [
+        self.comb += [
             If((SubstractionTrig == (2**(groups - 1) - 1)), 
                 If(TriggeredCon == 0, self.PacketTrigger.eq(1)))
             .Else(self.PacketTrigger.eq(0))
@@ -160,7 +157,9 @@ class TriggerCollector(Module, HasDdbManager):
 
         for i in range(groups):
             self.sync.rio_phy += [
-                If(self.PacketTrigger==1, self.ChannelPackets[i].Triggered.eq(1))
+                If(self.Enabled==1, 
+                    If(self.PacketTrigger==1, self.ChannelPackets[i].Triggered.eq(1))
+                )
             ]
 
         self.Trigger = self._add_output(self.PacketTrigger)
@@ -293,6 +292,7 @@ class SimulationWrapper(Module):
             cd.clk,
             cd.rst,
             *(get_bus_signals(dut.reset_phy.rtlink, "reset_phy_rtio")),
+            *(get_bus_signals(dut.rtlink, "config_rtio")),
             dut.WriteSignals,
             dut.InputPackets[0].ID,
             dut.InputPackets[0].SystemTimestamp,
