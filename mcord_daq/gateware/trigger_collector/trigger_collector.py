@@ -14,8 +14,6 @@ from artiq.gateware.rtio import rtlink
 from artiq.gateware.rtio.channel import Channel
 from artiq.gateware.rtio.phy.ttl_simple import Output
 
-from elhep_cores.cores.trigger_generators import TriggerGenerator, \
-    RtioCoincidenceTriggerGenerator, RtioTriggerGenerator
 from elhep_cores.cores.rtlink_csr import RtLinkCSR
 from elhep_cores.helpers.ddb_manager import HasDdbManager
 from elhep_cores.simulation.common import update_tb
@@ -39,8 +37,10 @@ class CollectorPacket:
         # EDIT: 14.07.2022 - decision to limit full transaction to two 32-bit words
         # We are only using ID and SystemTimestamp - together 64bits
 
-        self.ID = Signal(5) ## previous 10 
-        self.SystemTimestamp = Signal(59) ## previous 64
+        # EDIT: 01.08.2022 - back to 3 words, with sync bits - together 96 bits
+
+        self.ID = Signal(10) ## previous 10 
+        self.SystemTimestamp = Signal(64) ## previous 64
         self.TDCSample = Signal(440)
         self.StatisticalValues = Signal(30)
         self.ADCSamples = Signal(200)
@@ -207,7 +207,6 @@ class TriggerCollector(Module, HasDdbManager):
         self.Tmax = Signal(32)
 
         self.sync.rio_phy += [
-            # self.rtlink.i.stb.eq(0),
             If(self.rtlink.o.stb,
                 # Write
                 If(rtlink_wen & (rtlink_address == 0),
@@ -216,9 +215,6 @@ class TriggerCollector(Module, HasDdbManager):
                 Elif(rtlink_wen & (rtlink_address == 1),
                     self.Tmax.eq(self.rtlink.o.data)
                 ).
-                # Elif(rtlink_wen & (rtlink_address >= 2),
-                #     mask_array[rtlink_address-2].eq(self.rtlink.o.data)
-                # ).
                 # Readout
                 Elif(~rtlink_wen & (rtlink_address == 0),
                     self.rtlink.i.data.eq(self.Enabled),
@@ -228,10 +224,6 @@ class TriggerCollector(Module, HasDdbManager):
                     self.rtlink.i.data.eq(self.Tmax),
                     self.rtlink.i.stb.eq(1)
                 )
-                # Elif(~rtlink_wen & (rtlink_address >= 2),
-                #     self.rtlink.i.data.eq(mask_array[rtlink_address-2]),
-                #     self.rtlink.i.stb.eq(1)
-                # )
             )
         ]
         
@@ -252,6 +244,65 @@ def get_bus_signals(bus, bus_name="rtio"):
     
     return signals
 
+class RTTriggerCollector(Module, HasDdbManager):
+    def __init__(self, groups=2, module_identifier="trigger_collector"):
+        self.module_identifier = module_identifier
+
+        self.clock_domains.cd_rio_phy = cd_rio_phy = ClockDomain()
+
+        self.submodules.TriggerCollector = self.TriggerCollector = TriggerCollector(groups, module_identifier)
+        self.Trigger = self.TriggerCollector.Trigger
+        
+
+        self.rtlink = self.TriggerCollector.rtlink
+
+        self._add_rtlink_input(groups)
+
+        self.Counters = []
+        
+        for i in range(groups):
+            self.Counters += [Signal(max=3, reset=0)]
+        # print(self.Counters[0])
+
+        SyncValue = 0x1ACFFC1D
+        
+
+        for i in range(groups):
+            self.sync.rio_phy += [
+                
+                If(self.rtlink_input[i].o.stb  == 1, 
+                    If(self.rtlink_input[i].o.data[:22] == SyncValue>>(10),
+                        self.Counters[i].eq(1),
+                        self.TriggerCollector.WriteSignals[i].eq(0),
+                        self.TriggerCollector.InputPackets[i].ID.eq(self.rtlink_input[i].o.data[22:]),
+                    ).
+                    Elif(self.Counters[i] == 1,
+                        
+                        self.TriggerCollector.InputPackets[i].SystemTimestamp.eq(self.rtlink_input[i].o.data),
+                        self.Counters[i].eq(2),
+                    ).
+                    Elif(self.Counters[i] == 2,
+                        self.TriggerCollector.InputPackets[i].SystemTimestamp.eq(self.rtlink_input[i].o.data<<32 | self.TriggerCollector.InputPackets[i].SystemTimestamp),
+                        self.TriggerCollector.WriteSignals[i].eq(1),
+                        self.Counters[i].eq(0),
+                    )
+                ).
+                Else(
+                    self.TriggerCollector.WriteSignals[i].eq(0),
+                )
+            ]
+
+
+
+        
+    def _add_rtlink_input(self, groups):
+        # adr_width = len(Signal(max=3+1))+2
+        self.rtlink_input = []
+        for i in range(groups):
+            self.rtlink_input += [rtlink.Interface(
+                rtlink.OInterface(data_width=32))
+            ]
+
 class SimulationWrapper(Module):
 
     def __init__(self):
@@ -263,41 +314,18 @@ class SimulationWrapper(Module):
 
         self.clock_domains.rio_phy = cd = ClockDomain()
 
-        # trigger_generators = []
-        # trigger_signals = []
-            
-        # outputs = [
-        # {
-        #     "label": f"output_{idx}", 
-        #         "trigger": Signal(name=f"trigger_out_{idx}", reset=0), 
-        #         "trigger_id": Signal(
-        #             trigger_id_len, 
-        #             name=f"trigger_out_id_{idx}",
-        #             reset=0
-        #         )
-        #     } for idx in range(4) 
-        # ]
-        # output_triggers = [o['trigger'] for o in outputs]
-
-        dut = TriggerCollector(
-            # input_channels, 
+        dut = RTTriggerCollector( 
             groups
         )
         self.submodules.dut = dut
 
-        # WriteSignals = Signal(groups, name="data_i")
-        # InputPackets = Signal(groups)
-
         self.io = {
             cd.clk,
             cd.rst,
-            *(get_bus_signals(dut.reset_phy.rtlink, "reset_phy_rtio")),
+            *(get_bus_signals(dut.TriggerCollector.reset_phy.rtlink, "reset_phy_rtio")),
             *(get_bus_signals(dut.rtlink, "config_rtio")),
-            dut.WriteSignals,
-            dut.InputPackets[0].ID,
-            dut.InputPackets[0].SystemTimestamp,
-            dut.InputPackets[1].ID,
-            dut.InputPackets[1].SystemTimestamp,
+            *(get_bus_signals(dut.rtlink_input[0], "input_rtio_0")),
+            *(get_bus_signals(dut.rtlink_input[1], "input_rtio_1")),
             dut.Trigger,
         }
 

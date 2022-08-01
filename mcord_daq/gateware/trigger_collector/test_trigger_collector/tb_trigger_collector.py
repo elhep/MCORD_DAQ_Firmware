@@ -16,12 +16,6 @@ import numpy as np
 from elhep_cores.simulation.cocotb_rtlink import RtLinkIface
 
 
-# def int_to_bits(i, length):
-#     if i < 0:
-#         raise ValueError("Number mus be >= 0")
-#     return [int(x) for x in bin(i)[2:].zfill(length)]
-
-
 class TriggerCollectorTB:
     """
     Testbench assumes we are simulating 2 input RTIO channels, where data comes
@@ -36,69 +30,21 @@ class TriggerCollectorTB:
         cocotb.fork(Clock(dut.rio_phy_clk, 8, 'ns').start())
         self.reset_rtlink = \
             RtLinkIface.get_iface_by_prefix(dut, "reset_phy_rtio", debug=debug)
-        # self.trig_rtlink = [
-        #     RtLinkIface.get_iface_by_prefix(dut, f"l0_{i}_rtio", debug=debug) 
-        #     for i in range(trig_num)
-        # ]
-        # self.l1_rtlink = [
-        #     RtLinkIface.get_iface_by_prefix(dut, f"l1_{i}_rtio", debug=debug) 
-        #     for i in range(l1_num)
-        # ]
+
         self.config_rtlink = \
             RtLinkIface.get_iface_by_prefix(dut, f"config_rtio", 
                 debug=debug) 
 
-        WriteSignals = [
-            getattr(dut, f"WriteSignals")
-        ]
-
-        IDs = []
-
+        self.rtlink_packet_input = []
         for i in range(trig_num):
-            if i == 0:
-                IDs += [
-                    getattr(dut, f"ID")
-                ]
-            else:
-                IDs += [
-                    getattr(dut, f"ID_{i}")
-                ]
-
-
-        # print(IDs)
-
-        SystemTimestamps = []
-
-        for i in range(trig_num):
-            if i == 0:
-                SystemTimestamps += [
-                    getattr(dut, f"SystemTimestamp")
-                ]
-            else:
-                SystemTimestamps += [
-                    getattr(dut, f"SystemTimestamp_{i}")
-                ]
-
-        self.packet_input = []
-        for i in range(trig_num):
-
-            self.packet_input.append([
-                WriteSignals,
-                IDs[i],
-                SystemTimestamps[i],
-            ]
-            )
+            self.rtlink_packet_input += [RtLinkIface.get_iface_by_prefix(dut, f"input_rtio_{i}", 
+                debug=debug) ]
             
         self.output = [
             getattr(dut, f"trigger")
         ]
-        # self.output_id = [
-        #     getattr(dut, f"trigger_out_id_{idx}") for idx in range(output_num)
-        # ]
 
     async def reset(self):
-        await self.write_packet(0, 0, 0)
-        await self.write_packet(1, 0, 0)
         await self.set_reset(1)
         await Timer(30, 'ns')
         await self.set_reset(0)
@@ -121,26 +67,14 @@ class TriggerCollectorTB:
         await self.config_rtlink.write(Tmax, 0x1 << 1 | 1)
         await self.fe
 
-    # async def set_triggers(self, mask):
-    #     await self.fe
-    #     for idx, trigger in enumerate(self.trigger):
-    #         trigger <= (mask >> idx) & 0x1
-    #     await self.re
     
     async def write_packet(self, group, ID, SystemTime):
+        SyncValue = 0x1ACFFC1D
         await self.fe
-        # print(self.)
-        # print(self.packet_input)
-        # print(self.packet_input[1][0])
-        self.packet_input[group][0][0] <= 2**group
-        self.packet_input[group][1] <= ID
-        self.packet_input[group][2] <= SystemTime
-        
+        await self.rtlink_packet_input[group].write(ID<<22|SyncValue>>10)
+        await self.rtlink_packet_input[group].write(SystemTime&0xFFFFFFFF)
+        await self.rtlink_packet_input[group].write(SystemTime>>32)
         await self.fe
-        self.packet_input[group][0][0] <= 0
-        self.packet_input[group][1] <= 0
-        self.packet_input[group][2] <= 0
-
 
 async def run_for_ax(tb): #, trigger_delay, enable):
     await tb.reset()
@@ -170,6 +104,12 @@ async def run_for_ax(tb): #, trigger_delay, enable):
 
     # Write 2nd packet
     await tb.write_packet(0, 3, 6530)   
+    # Check for trigger 
+    while not test:
+        await tb.re
+        if tb.output[0] == 1:
+            test = True
+    await tb.re
 
 
     await Timer(300, 'ns')
